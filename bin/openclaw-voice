@@ -12,11 +12,11 @@ mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
 if mode == 'open':
     mode = 'toggle'
 if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
-    raise SystemExit('Usage: ant-voice [toggle|stop|mute|status|preflight]')
+    raise SystemExit('Usage: openclaw-voice [toggle|stop|mute|status|preflight]')
 runtime = os.environ.get('XDG_RUNTIME_DIR')
 if not runtime:
-    raise SystemExit('Run Ant Voice inside your desktop session.')
-path = str(Path(runtime) / 'ant-voice/control.sock')
+    raise SystemExit('Run OpenClaw Voice inside your desktop session.')
+path = str(Path(runtime) / 'openclaw-voice/control.sock')
 
 
 def request(command):
@@ -37,7 +37,7 @@ try:
         try:
             result = request(mode)
         except (OSError, ValueError, RuntimeError):
-            subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=True, timeout=25)
+            subprocess.run(['systemctl', '--user', 'stop', 'openclaw-voice.service'], check=True, timeout=25)
             # A manually started daemon may be outside systemd's control.
             # Do not claim its microphone is off without a control acknowledgment.
             raise RuntimeError('Stopped the systemd service; could not verify another daemon.')
@@ -45,7 +45,7 @@ try:
         try:
             request('status')
         except (OSError, ValueError, RuntimeError):
-            subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True, timeout=25)
+            subprocess.run(['systemctl', '--user', 'start', 'openclaw-voice.service'], check=True, timeout=25)
         for attempt in range(40):
             try:
                 status = request('status')
@@ -62,9 +62,9 @@ except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
     if mode == 'toggle':
         # A timed-out start may have reached the daemon. Cancel it rather than
         # reporting failure while leaving a microphone running.
-        subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=False)
+        subprocess.run(['systemctl', '--user', 'stop', 'openclaw-voice.service'], check=False)
     try:
-        subprocess.run(['notify-send', 'Ant Voice', 'Voice unavailable. Check the gateway and audio setup.'], check=False)
+        subprocess.run(['notify-send', 'OpenClaw Voice', 'Voice unavailable. Check the gateway and audio setup.'], check=False)
     except OSError:
         pass
-    raise SystemExit('Voice command failed. Use ant-voice stop to end any remaining session.')
+    raise SystemExit('Voice command failed. Use openclaw-voice stop to end any remaining session.')

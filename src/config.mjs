@@ -7,7 +7,7 @@ export async function loadConfig() {
   const home = homedir();
   const configHome = process.env.XDG_CONFIG_HOME || join(home, '.config');
   let options = {};
-  try { options = JSON.parse(await readFile(join(configHome, 'ant-voice/config.json'), 'utf8')); }
+  try { options = JSON.parse(await readFile(join(configHome, 'openclaw-voice/config.json'), 'utf8')); }
   catch (e) { if (e.code !== 'ENOENT') throw e; }
   const openclaw = JSON.parse(await readFile(options.openclawConfig || join(home, '.openclaw/openclaw.json'), 'utf8'));
   return {

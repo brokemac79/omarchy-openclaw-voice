@@ -8,7 +8,7 @@ import tempfile
 import threading
 import unittest
 
-LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/ant-voice'
+LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
 
 
 @unittest.skipIf(os.name == 'nt', 'Linux launcher and Unix socket')
@@ -16,10 +16,10 @@ class LauncherTests(unittest.TestCase):
     def test_existing_manual_daemon_does_not_start_a_competing_unit(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / 'ant-voice').mkdir()
+            (root / 'openclaw-voice').mkdir()
             commands = []
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-                server.bind(str(root / 'ant-voice/control.sock'))
+                server.bind(str(root / 'openclaw-voice/control.sock'))
                 server.listen()
 
                 def reply():

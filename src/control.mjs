@@ -12,7 +12,7 @@ export async function listenControl(runtime, dispatch) {
   const lock = net.createServer(socket => socket.destroy());
   await new Promise((resolve, reject) => {
     lock.once('error', reject);
-    lock.listen(`\0ant-voice-${process.getuid()}-${directory.dev}-${directory.ino}`, resolve);
+    lock.listen(`\0openclaw-voice-${process.getuid()}-${directory.dev}-${directory.ino}`, resolve);
   });
   try {
     const path = join(runtime, 'control.sock');

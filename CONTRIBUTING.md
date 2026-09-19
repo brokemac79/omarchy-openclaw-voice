@@ -24,8 +24,8 @@ Before a public release, review repository history, dependency compatibility,
 documentation and actual microphone/speaker behaviour. Do not bypass scanners.
 
 For an explicitly authorized live smoke test, stop the installed service, run
-`ANT_VOICE_TEST_SILENCE=1 node src/server.mjs`, then in another terminal run
-`ANT_VOICE_LIVE_TEST=1 node test/live-smoke.mjs`. The test refuses a daemon that
+`OPENCLAW_VOICE_TEST_SILENCE=1 node src/server.mjs`, then in another terminal run
+`OPENCLAW_VOICE_LIVE_TEST=1 node test/live-smoke.mjs`. The test refuses a daemon that
 has real microphone capture enabled. Stop the test daemon before restoring the
 normal service. Never add the test environment flag to the installed service.
 

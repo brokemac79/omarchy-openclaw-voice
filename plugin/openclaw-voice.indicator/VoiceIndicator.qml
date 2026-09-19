@@ -12,7 +12,7 @@ import qs.Ui
 // reflects what the assistant is doing without polling a process.
 BarWidget {
   id: root
-  moduleName: "ant.indicator"
+  moduleName: "openclaw-voice.indicator"
 
   property string status: "stopped"
   property string label: ""
@@ -40,7 +40,7 @@ BarWidget {
 
   FileView {
     id: state
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/ant-voice/state.json"
+    path: Quickshell.env("XDG_RUNTIME_DIR") + "/openclaw-voice/state.json"
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -72,10 +72,10 @@ BarWidget {
              || root.status === "acting" || root.status === "confirm"
     tooltipText: root.label !== ""
                  ? root.status + " — " + root.label
-                 : "Ant Voice: " + root.status
+                 : "OpenClaw Voice: " + root.status
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
-      root.bar.run(Quickshell.env("HOME") + "/.local/bin/ant-voice toggle")
+      root.bar.run(Quickshell.env("HOME") + "/.local/bin/openclaw-voice toggle")
     }
   }
 }

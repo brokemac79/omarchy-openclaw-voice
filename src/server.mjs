@@ -9,9 +9,9 @@ import { listenControl } from './control.mjs';
 import { MODEL } from './policy.mjs';
 
 const config = await loadConfig();
-const syntheticSilence = process.env.ANT_VOICE_TEST_SILENCE === '1';
+const syntheticSilence = process.env.OPENCLAW_VOICE_TEST_SILENCE === '1';
 if (!process.env.XDG_RUNTIME_DIR) throw new Error('Run inside your Linux user session.');
-const runtime = join(process.env.XDG_RUNTIME_DIR, 'ant-voice');
+const runtime = join(process.env.XDG_RUNTIME_DIR, 'openclaw-voice');
 let connected = false, shuttingDown = false, owner, session, native;
 const status = () => ({ connected, requested: owner.requested, active: owner.active,
   muted: owner.muteConfirmed, muteRequested: owner.muted, engineStarting: owner.engineStarting,
@@ -36,7 +36,7 @@ native = await createState(runtime);
 const { GatewayClient, startGatewayClientWhenEventLoopReady } = await import(pathToFileURL(config.sdk));
 const client = new GatewayClient({
   url: config.gatewayUrl, deviceAuthScope: config.gatewayUrl,
-  clientName: 'gateway-client', clientDisplayName: 'Ant Voice', clientVersion: '0.3.0', mode: 'backend',
+  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.3.1', mode: 'backend',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
   onHelloOk: () => { connected = true; if (!owner.requested) native.set('idle', 'Microphone off'); },

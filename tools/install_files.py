@@ -22,7 +22,7 @@ def validate_path(path):
 
 def atomic_write(path, content, mode=0o600):
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix='.ant-voice-', dir=path.parent)
+    descriptor, temporary = tempfile.mkstemp(prefix='.openclaw-voice-', dir=path.parent)
     try:
         with os.fdopen(descriptor, 'wb') as output:
             output.write(content)

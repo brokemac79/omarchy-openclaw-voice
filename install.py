@@ -27,8 +27,8 @@ home = Path.home()
 config = Path(os.environ.get('XDG_CONFIG_HOME', home / '.config'))
 data = Path(os.environ.get('XDG_DATA_HOME', home / '.local/share'))
 state = Path(os.environ.get('XDG_STATE_HOME', home / '.local/state'))
-target = data / 'ant-voice'
-backup = state / 'ant-voice/backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+target = data / 'openclaw-voice'
+backup = state / 'openclaw-voice/backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
 plan = FilePlan(backup)
 put = plan.put
 
@@ -41,8 +41,8 @@ for old in ('src/browser.mjs', 'engine/app.js', 'engine/index.html'):
     plan.remove(target / old)
 for name in ('LICENSE', 'LICENSE-OMA', 'CREDITS.md', 'package.json'):
     put(target / name, (source / name).read_bytes())
-put(home / '.local/bin/ant-voice', (source / 'bin/ant-voice').read_bytes(), 0o755)
-for plugin in ('ant.orb', 'ant.indicator'):
+put(home / '.local/bin/openclaw-voice', (source / 'bin/openclaw-voice').read_bytes(), 0o755)
+for plugin in ('openclaw-voice.orb', 'openclaw-voice.indicator'):
     for file in (source / 'plugin' / plugin).iterdir():
         if file.is_file():
             put(config / 'omarchy/plugins' / plugin / file.name, file.read_bytes())
@@ -51,8 +51,8 @@ for plugin in ('ant.orb', 'ant.indicator'):
 def quote(value):
     return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
 
-put(config / 'systemd/user/ant-voice.service', f'''[Unit]
-Description=Ant Voice - OMA interface for OpenClaw
+put(config / 'systemd/user/openclaw-voice.service', f'''[Unit]
+Description=OpenClaw Voice - OMA interface for OpenClaw
 After=graphical-session.target
 
 [Service]
@@ -67,44 +67,44 @@ NoNewPrivileges=true
 
 # Started on demand. Installing does not enable microphone capture or login startup.
 ''')
-put(data / 'applications/ant-voice.desktop', f'''[Desktop Entry]
+put(data / 'applications/openclaw-voice.desktop', f'''[Desktop Entry]
 Type=Application
-Name=Ant Voice
+Name=OpenClaw Voice
 Comment=Start or end your OpenClaw voice conversation
-Exec="{home}/.local/bin/ant-voice" toggle
+Exec="{home}/.local/bin/openclaw-voice" toggle
 Icon=audio-input-microphone
 Terminal=false
 Categories=AudioVideo;Audio;
 ''')
-# This file is owned by Ant Voice, so it also replaces the old browser-card rule.
-put(config / 'hypr/ant-voice.lua', f'''-- Ant Voice native OMA orb; starts only on explicit invocation.
+# This file is owned by OpenClaw Voice, so it also replaces the old browser-card rule.
+put(config / 'hypr/openclaw-voice.lua', f'''-- OpenClaw Voice native OMA orb; starts only on explicit invocation.
 hl.unbind("SUPER + SHIFT + V")
-o.bind("SUPER + SHIFT + V", "Talk to Ant / end voice", {json.dumps(str(home / '.local/bin/ant-voice'))} .. " toggle")
+o.bind("SUPER + SHIFT + V", "Talk to OpenClaw / end voice", {json.dumps(str(home / '.local/bin/openclaw-voice'))} .. " toggle")
 ''')
 hypr = config / 'hypr/hyprland.lua'
 text = hypr.read_text()
-if 'require("hypr.ant-voice")' not in text:
-    put(hypr, text.rstrip() + '\n\nrequire("hypr.ant-voice")\n')
+if 'require("hypr.openclaw-voice")' not in text:
+    put(hypr, text.rstrip() + '\n\nrequire("hypr.openclaw-voice")\n')
 shell = config / 'omarchy/shell.json'
 if shell.exists():
     put(shell, shell.read_bytes())  # Snapshot before the supported CLI changes layout.
 # Validate every destination before stopping the service or changing any file.
 plan.validate()
 # Refuse to overwrite a running installation if systemd cannot stop its unit.
-load_state = subprocess.check_output(['systemctl', '--user', 'show', 'ant-voice.service',
+load_state = subprocess.check_output(['systemctl', '--user', 'show', 'openclaw-voice.service',
                                       '--property=LoadState', '--value'], text=True).strip()
 if load_state != 'not-found':
-    subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=True)
+    subprocess.run(['systemctl', '--user', 'stop', 'openclaw-voice.service'], check=True)
 plan.apply()
 subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
-for plugin in ('ant.orb', 'ant.indicator'):
+for plugin in ('openclaw-voice.orb', 'openclaw-voice.indicator'):
     subprocess.run(['omarchy', 'plugin', 'validate', str(config / 'omarchy/plugins' / plugin)], check=True)
     subprocess.run(['omarchy', 'plugin', 'enable', plugin], check=True)
-subprocess.run(['omarchy', 'bar', 'move', 'ant.indicator', '--section', 'right'], check=True)
+subprocess.run(['omarchy', 'bar', 'move', 'openclaw-voice.indicator', '--section', 'right'], check=True)
 subprocess.run(['hyprctl', 'reload'], check=True)
 errors = subprocess.check_output(['hyprctl', 'configerrors'], text=True).strip()
 if errors and errors != 'ok':
     raise SystemExit('Hyprland reported configuration errors. Inspect hyprctl configerrors.')
-subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True)
+subprocess.run(['systemctl', '--user', 'start', 'openclaw-voice.service'], check=True)
 print('Installed. Microphone off. Super+Shift+V now controls the native OMA interface.')
 print('Backups:', backup)

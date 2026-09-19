@@ -12,7 +12,7 @@ export class EngineOwner {
     if (this.requested) return this.startup;
     this.requested = true; this.muted = this.muteConfirmed = false;
     const epoch = ++this.epoch, previous = this.startup;
-    this.phase = 'thinking'; this.caption = 'Connecting to Ant'; this.render();
+    this.phase = 'thinking'; this.caption = 'Connecting to OpenClaw'; this.render();
     const work = (async () => {
       await previous;
       if (epoch !== this.epoch) return;
@@ -51,7 +51,7 @@ export class EngineOwner {
   }
   telemetry(data) {
     this.lastSeen = this.now();
-    if (data.active === true && !this.active) { this.phase = 'listening'; this.caption = 'Ant is listening'; }
+    if (data.active === true && !this.active) { this.phase = 'listening'; this.caption = 'Listening'; }
     this.active = data.active === true;
     this.muteConfirmed = data.muted === true;
     this.native.levels(this.muteConfirmed ? 0 : data.input, data.output);

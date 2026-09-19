@@ -23,6 +23,8 @@ The bridge connects to your existing remote OpenClaw gateway. It requests
 `gpt-live-1-codex` with `brain: agent-consult` so your selected agent supplies
 tools, memory and reasoning through OpenClaw. Voice controls and approvals
 remain owned by the gateway. Clicking the icon never approves a pending action.
+The app has no fixed agent name. Set `sessionKey` in your private configuration
+to select your own OpenClaw agent and conversation.
 
 Speech uses the gateway's existing **ChatGPT OAuth** setup. No API key or paid
 speech fallback is added. Before each call, the bridge checks the gateway's
@@ -61,11 +63,11 @@ git config core.hooksPath .githooks
 omarchy pkg add python-gobject gst-plugins-base gst-plugins-good gst-plugins-bad libnice
 python3 install.py
 # If Node is outside PATH: python3 install.py --node /path/to/node
-ant-voice preflight
+openclaw-voice preflight
 ```
 
 The installer backs up overwritten user files under
-`~/.local/state/ant-voice/backups/`, installs the two native plugins and adds
+`~/.local/state/openclaw-voice/backups/`, installs the two native plugins and adds
 the shortcut. **Super+Shift+V is replaced**; review any existing binding first.
 Symlink destinations are rejected before any installation changes; resolve them
 to ordinary user files first. XDG directories outside the home directory are
@@ -75,7 +77,7 @@ is opened by installation and the service is not enabled at login.
 
 Default dependency locations match an OpenClaw Node installation under
 `~/.local/share/openclaw-node/node_modules/`. To override them, create
-`~/.config/ant-voice/config.json` with mode `0600`:
+`~/.config/openclaw-voice/config.json` with mode `0600`:
 
 ```json
 {
@@ -97,10 +99,10 @@ does not discover or control Sonos or Spotify devices.
 | Control | Action |
 | --- | --- |
 | Super+Shift+V / bar icon / app launcher | Start or end the conversation |
-| `ant-voice stop` | End voice and release microphone/playback |
-| `ant-voice mute` | Toggle microphone transmission during a call |
-| `ant-voice status` | Show local connection and microphone state |
-| `ant-voice preflight` | Check visible gateway authentication and voice readiness |
+| `openclaw-voice stop` | End voice and release microphone/playback |
+| `openclaw-voice mute` | Toggle microphone transmission during a call |
+| `openclaw-voice status` | Show local connection and microphone state |
+| `openclaw-voice preflight` | Check visible gateway authentication and voice readiness |
 
 Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection
@@ -109,15 +111,15 @@ microphone, speaker and echo behaviour still require a test on each device.
 There is no wake-word listener in this version.
 
 The latest short caption and two audio levels are stored with private permissions
-under `$XDG_RUNTIME_DIR/ant-voice/`. The bridge does not save audio or transcript
+under `$XDG_RUNTIME_DIR/openclaw-voice/`. The bridge does not save audio or transcript
 history. OpenClaw and the voice provider have their own session storage.
 
-For problems, first run `ant-voice status`, then check the user service status
+For problems, first run `openclaw-voice status`, then check the user service status
 and gateway Talk diagnostics privately. Do not post raw diagnostics containing
 tokens, transcripts or private hostnames.
 
-To disable: run `ant-voice stop`, stop `ant-voice.service`, disable `ant.orb` and
-`ant.indicator` with `omarchy plugin disable`, and remove the Ant Voice `require`
+To disable: run `openclaw-voice stop`, stop `openclaw-voice.service`, disable `openclaw-voice.orb` and
+`openclaw-voice.indicator` with `omarchy plugin disable`, and remove the OpenClaw Voice `require`
 line from your Hyprland config. The backup manifest records each overwritten
 file; restore individual files after checking for subsequent edits. Do not
 restore an old full shell config over newer customizations.

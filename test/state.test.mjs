@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createState } from '../src/state.mjs';
 
 test('runtime state is private, bounds captions, and clears audio and caption on shutdown', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'ant-voice-test-'));
+  const directory = await mkdtemp(join(tmpdir(), 'openclaw-voice-test-'));
   const state = await createState(directory);
   try {
     state.set('listening', 'Synthetic caption '.repeat(30)); state.levels(0.2, 2);

@@ -9,8 +9,8 @@ Upstream source revision: `8ef9d6094cff87ad88903481de2b6b4e942c4e86`.
 
 | This repository | Upstream source | Changes |
 | --- | --- | --- |
-| `plugin/ant.orb/VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, plain-text captions and duplex-audio comments |
-| `plugin/ant.indicator/VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Ant naming, launcher command, stale-state handling; no click-to-confirm approval |
+| `plugin/openclaw-voice.orb/VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, plain-text captions and duplex-audio comments |
+| `plugin/openclaw-voice.indicator/VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, launcher command, stale-state handling; no click-to-confirm approval |
 | Plugin manifests | Corresponding OMA plugin manifests | Names, IDs, author credit, descriptions and version |
 | `tools/check_public_files.py` | Same path | Unchanged publication guard |
 | `.githooks/pre-commit`, `.githooks/pre-push` | Same paths | Unchanged privacy hooks |
