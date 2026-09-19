@@ -5,6 +5,7 @@ export class VoiceSession {
   constructor(rpc, sessionKey, voice = 'cove') {
     this.rpc = rpc; this.sessionKey = sessionKey; this.voice = voice;
     this.epoch = 0; this.grant = null; this.creating = false; this.closing = Promise.resolve();
+    this.pending = Promise.resolve();
   }
   async preflight() {
     const snapshot = await this.rpc('config.get');
@@ -15,12 +16,16 @@ export class VoiceSession {
     if (!catalog.realtime?.ready) throw new Error('Gateway realtime voice is not ready.');
     return policy;
   }
-  async create() {
-    if (this.creating || this.grant) throw new Error('Voice is already starting or active.');
+  create() {
+    if (this.creating || this.grant) return Promise.reject(new Error('Voice is already starting or active.'));
     const epoch = this.epoch;
     this.creating = true;
+    this.pending = this.acquire(epoch, this.closing);
+    return this.pending;
+  }
+  async acquire(epoch, previousClose) {
     try {
-      await this.closing;
+      await previousClose;
       await this.preflight();
       if (epoch !== this.epoch) throw new Error('Voice startup cancelled.');
       const grant = await this.rpc('talk.client.create', {
@@ -44,7 +49,9 @@ export class VoiceSession {
   async close() {
     this.epoch++;
     const old = this.grant; this.grant = null;
-    if (old) this.closing = this.closeGrant(old).catch(() => {});
+    // A late grant belongs to the cancelled call. Finish releasing it before
+    // allowing a new engine to reserve another provider session.
+    this.closing = Promise.allSettled([this.closing, this.pending, old ? this.closeGrant(old) : undefined]);
     await this.closing;
   }
 }

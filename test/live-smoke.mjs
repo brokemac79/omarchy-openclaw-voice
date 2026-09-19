@@ -1,13 +1,21 @@
 // Explicit integration check. The daemon must itself be in silence-only mode.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import net from 'node:net';
 import { join } from 'node:path';
 if (process.env.ANT_VOICE_LIVE_TEST !== '1') throw new Error('Set ANT_VOICE_LIVE_TEST=1 to opt in.');
-const { origin, key } = JSON.parse(await readFile(join(process.env.XDG_RUNTIME_DIR, 'ant-voice/connection.json')));
-const headers = { 'x-ant-voice-key': key };
-async function request(path, method = 'GET') {
-  const response = await fetch(origin + path, { headers, method });
-  assert.ok(response.ok, `HTTP request failed: ${path}`); return response.json();
+async function request(command) {
+  return new Promise((resolve, reject) => {
+    const client = net.connect(join(process.env.XDG_RUNTIME_DIR, 'ant-voice/control.sock'));
+    let buffer = '';
+    client.on('connect', () => client.write(JSON.stringify({ command: command.replace('/', '') }) + '\n'));
+    client.setTimeout(35000, () => { client.destroy(); reject(new Error('Control timeout')); });
+    client.on('error', reject);
+    client.on('data', data => { buffer += data; });
+    client.on('end', () => {
+      try { const result = JSON.parse(buffer); assert.equal(result.ok, true); resolve(result); }
+      catch (error) { reject(error); }
+    });
+  });
 }
 async function until(predicate, timeout = 45000) {
   const deadline = Date.now() + timeout;
@@ -22,8 +30,6 @@ async function until(predicate, timeout = 45000) {
 const initial = await request('/status');
 assert.equal(initial.syntheticSilence, true, 'Refusing to test with real microphone or speakers.');
 assert.equal(initial.requested, false, 'An existing conversation must not be interrupted.');
-assert.equal((await fetch(origin + '/status')).status, 403);
-assert.equal((await fetch(origin + '/status', { headers: { ...headers, Origin: 'https://example.com' } })).status, 403);
 let connected = false, mute = false;
 try {
   await until(s => s.connected);
@@ -38,5 +44,5 @@ try {
   const final = await request('/status');
   assert.equal(final.status, 'idle');
   console.log(JSON.stringify({ webRTCConnected: connected, mute, stopped: !final.active,
-    startupCancellation: 'passed', authenticationChecks: 'passed', audio: 'synthetic silence; playback muted' }));
+    startupCancellation: 'passed', engine: 'gstreamer', audio: 'synthetic silence; fake playback sink' }));
 } finally { await request('/stop', 'POST'); }

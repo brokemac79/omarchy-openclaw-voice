@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkVoiceConfig, checkGrant, isAuthorized, validateGateway, level } from '../src/policy.mjs';
+import { checkVoiceConfig, checkGrant, validateGateway, level } from '../src/policy.mjs';
 
 const oauth = () => ({ auth: { profiles: { voice: { provider: 'openai', mode: 'oauth' } } } });
 test('OAuth is required; reasoning fallbacks are preserved and reported', () => {
@@ -27,14 +27,6 @@ test('grant must keep the expected OAuth model, audio transport and gateway owne
   assert.doesNotThrow(() => checkGrant(good));
   for (const patch of [{ model: 'other' }, { transport: 'websocket' }, { offerUrl: 'https://example.com' },
     { clientControl: { owner: 'client' } }, { clientSecret: '' }]) assert.throws(() => checkGrant({ ...good, ...patch }));
-});
-test('loopback controls reject missing tokens, foreign origins and Host rebinding', () => {
-  const origin = 'http://127.0.0.1:17864';
-  const good = { host: '127.0.0.1:17864', 'x-ant-voice-key': 'test-capability' };
-  assert.equal(isAuthorized({ headers: good }, 'test-capability', origin), true);
-  for (const patch of [{ 'x-ant-voice-key': undefined }, { origin: 'https://example.com' }, { host: 'example.com' }]) {
-    assert.equal(isAuthorized({ headers: { ...good, ...patch } }, 'test-capability', origin), false);
-  }
 });
 test('remote gateway must be a secure origin without embedded credentials', () => {
   assert.equal(validateGateway('wss://example.com/'), 'wss://example.com');

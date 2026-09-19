@@ -13,10 +13,11 @@ repository is private during development; making it public is a separate decisio
 
 ## How it works
 
-The native Quickshell plugins display state from a small local bridge. While a
-call is active, a background Chromium instance handles microphone capture,
-echo cancellation, speaker audio and WebRTC. There is no browser voice window.
-Chromium closes when the conversation ends; the idle bridge does not record.
+The native Quickshell plugins display state from a small local service. During
+an explicit call, a native **GStreamer** worker handles microphone capture,
+echo cancellation, speaker audio and WebRTC through Omarchy's PipeWire audio
+server. The launcher uses a private Unix socket. No browser or local HTTP server
+is required. See [the architecture decision](docs/ARCHITECTURE.md).
 
 The bridge connects to your existing remote OpenClaw gateway. It requests
 `gpt-live-1-codex` with `brain: agent-consult` so your selected agent supplies
@@ -38,9 +39,11 @@ path. It does not patch the gateway or replace its authentication.
 ## Requirements
 
 - Omarchy with its Lua Hyprland configuration and Quickshell plugin system.
-- Node.js 22+, Python 3, Chromium, and a user systemd session.
+- Node.js 22+, Python 3 with PyGObject, GStreamer, and a user systemd session.
+- GStreamer base/good/bad plugins and libnice, including `webrtcbin`,
+  `webrtcdsp`, Opus and PulseAudio elements. `native/audio.py --check` checks them.
 - An OpenClaw installation exposing `dist/plugin-sdk/gateway-runtime.js`, plus
-  `playwright-core`. Initial integration used OpenClaw client 2026.9.4 and
+  its runtime dependencies. Initial integration used OpenClaw client 2026.9.4 and
   gateway 2026.9.5; the Talk APIs can change between releases.
 - A reachable remote gateway configured in `~/.openclaw/openclaw.json`, a paired
   device with the needed operator scopes, and working GPT-Live ChatGPT OAuth.
@@ -54,6 +57,8 @@ Read the source and run from your graphical session:
 
 ```sh
 git config core.hooksPath .githooks
+# If needed, install audio dependencies through Omarchy:
+omarchy pkg add python-gobject gst-plugins-base gst-plugins-good gst-plugins-bad libnice
 python3 install.py
 # If Node is outside PATH: python3 install.py --node /path/to/node
 ant-voice preflight
@@ -62,7 +67,10 @@ ant-voice preflight
 The installer backs up overwritten user files under
 `~/.local/state/ant-voice/backups/`, installs the two native plugins and adds
 the shortcut. **Super+Shift+V is replaced**; review any existing binding first.
-Packaged Omarchy files are never edited. The bridge starts idle; no microphone
+Symlink destinations are rejected before any installation changes; resolve them
+to ordinary user files first. XDG directories outside the home directory are
+supported, and the backup manifest records original paths and modes. Packaged
+Omarchy files are never edited. The bridge starts idle; no microphone
 is opened by installation and the service is not enabled at login.
 
 Default dependency locations match an OpenClaw Node installation under
@@ -72,15 +80,16 @@ Default dependency locations match an OpenClaw Node installation under
 ```json
 {
   "gatewaySdk": "/path/to/openclaw/dist/plugin-sdk/gateway-runtime.js",
-  "playwright": "/path/to/playwright-core/index.mjs",
-  "chromium": "/usr/bin/chromium",
+  "python": "/usr/bin/python3",
   "sessionKey": "agent:main:main",
   "voice": "cove"
 }
 ```
 
-`openclawConfig`, `port`, `inputDeviceId` and `outputDeviceId` are optional.
-By default, Chromium uses the system microphone and speakers. This integration
+`openclawConfig`, `inputDevice` and `outputDevice` are optional. The latter two
+are stable PulseAudio device names from `pactl list short sources` and
+`pactl list short sinks`. The defaults use the system microphone and speakers.
+If upgrading, replace any old browser device IDs with these native names. This integration
 does not discover or control Sonos or Spotify devices.
 
 ## Controls and limits
@@ -93,7 +102,7 @@ does not discover or control Sonos or Spotify devices.
 | `ant-voice status` | Show local connection and microphone state |
 | `ant-voice preflight` | Check visible gateway authentication and voice readiness |
 
-Microphone mute disables its WebRTC track; Stop releases the device and closes
+Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.

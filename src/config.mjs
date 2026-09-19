@@ -13,13 +13,11 @@ export async function loadConfig() {
   return {
     gatewayUrl: validateGateway(openclaw.gateway?.remote?.url),
     sdk: options.gatewaySdk || join(home, '.local/share/openclaw-node/node_modules/openclaw/dist/plugin-sdk/gateway-runtime.js'),
-    playwright: options.playwright || join(home, '.local/share/openclaw-node/node_modules/playwright-core/index.mjs'),
-    chromium: options.chromium || '/usr/bin/chromium',
+    python: options.python || '/usr/bin/python3',
     sessionKey: options.sessionKey || 'agent:main:main',
     voice: options.voice || 'cove',
-    port: options.port ?? 17864,
-    // Optional browser device IDs stay in this private configuration file.
-    inputDeviceId: options.inputDeviceId,
-    outputDeviceId: options.outputDeviceId,
+    // Stable PipeWire/PulseAudio device names, stored outside the checkout.
+    inputDevice: options.inputDevice,
+    outputDevice: options.outputDevice,
   };
 }

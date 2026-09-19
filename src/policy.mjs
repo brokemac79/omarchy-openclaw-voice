@@ -22,11 +22,6 @@ export function checkGrant(grant) {
   }
 }
 
-export function isAuthorized(req, key, origin) {
-  return req.headers.host === new URL(origin).host &&
-    (!req.headers.origin || req.headers.origin === origin) && req.headers['x-ant-voice-key'] === key;
-}
-
 export function validateGateway(value) {
   const url = new URL(value);
   if (url.protocol !== 'wss:' || url.username || url.password || url.search || url.hash || url.pathname !== '/') {

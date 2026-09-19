@@ -21,8 +21,9 @@ with each derived plugin. Integration code and modifications are MIT-licensed,
 Copyright (c) 2026 brokemac79.
 
 [OpenClaw](https://github.com/openclaw/openclaw) provides the gateway, agent
-consultation and voice session controls. Chromium and Playwright provide the
-WebRTC audio engine. These dependencies are installed separately and retain
+consultation and voice session controls. GStreamer, its WebRTC audio-processing
+plugins and PyGObject provide the native audio engine; PipeWire supplies desktop
+audio through its PulseAudio compatibility interface. These dependencies are installed separately and retain
 their own licences; this repository does not relicense or bundle them.
 
 This is an independent integration, without an endorsement from OMA, OpenClaw,

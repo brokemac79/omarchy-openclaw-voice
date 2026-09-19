@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Control the OMA-derived native interface. Microphone opens only on toggle."""
-from pathlib import Path
+"""Control the native voice service through a private Unix socket."""
 import json
 import os
+from pathlib import Path
+import socket
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 
 mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
 if mode == 'open':
@@ -17,29 +16,55 @@ if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
 runtime = os.environ.get('XDG_RUNTIME_DIR')
 if not runtime:
     raise SystemExit('Run Ant Voice inside your desktop session.')
-connection = Path(runtime) / 'ant-voice/connection.json'
-subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True)
+path = str(Path(runtime) / 'ant-voice/control.sock')
 
-def request(path, method='GET'):
-    data = json.loads(connection.read_text())
-    req = urllib.request.Request(data['origin'] + path, method=method,
-                                 headers={'x-ant-voice-key': data['key']})
-    with urllib.request.urlopen(req, timeout=25) as response:
-        return json.load(response)
+
+def request(command):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(32)
+        client.connect(path)
+        client.sendall((json.dumps({'command': command}) + '\n').encode())
+        with client.makefile('rb') as response:
+            data = json.loads(response.readline(65537))
+        if not data.get('ok'):
+            raise RuntimeError('Voice command failed.')
+        return data
+
 
 try:
-    for attempt in range(60):
+    if mode == 'stop':
+        # If control has failed, systemd still owns and can terminate all audio processes.
         try:
-            status = request('/status')
-            if mode in {'stop', 'status'} or status['connected']:
-                break
-        except (OSError, ValueError):
-            pass
-        time.sleep(0.2)
+            result = request(mode)
+        except (OSError, ValueError, RuntimeError):
+            subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=True, timeout=25)
+            # A manually started daemon may be outside systemd's control.
+            # Do not claim its microphone is off without a control acknowledgment.
+            raise RuntimeError('Stopped the systemd service; could not verify another daemon.')
     else:
-        raise RuntimeError('Ant Voice could not connect. Check the gateway and Tailscale.')
-    result = request('/' + mode, 'GET' if mode in {'status', 'preflight'} else 'POST')
+        try:
+            request('status')
+        except (OSError, ValueError, RuntimeError):
+            subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True, timeout=25)
+        for attempt in range(40):
+            try:
+                status = request('status')
+                if mode == 'status' or status['connected']:
+                    break
+            except (OSError, ValueError, RuntimeError):
+                pass
+            time.sleep(0.2)
+        else:
+            raise RuntimeError('Gateway unavailable.')
+        result = status if mode == 'status' else request(mode)
     print(json.dumps(result))
-except (OSError, ValueError, RuntimeError) as error:
-    subprocess.run(['notify-send', 'Ant Voice', 'Could not connect. Check the gateway and audio setup.'], check=False)
-    raise SystemExit('Ant Voice unavailable; microphone has not been started by this command.') from error
+except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+    if mode == 'toggle':
+        # A timed-out start may have reached the daemon. Cancel it rather than
+        # reporting failure while leaving a microphone running.
+        subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=False)
+    try:
+        subprocess.run(['notify-send', 'Ant Voice', 'Voice unavailable. Check the gateway and audio setup.'], check=False)
+    except OSError:
+        pass
+    raise SystemExit('Voice command failed. Use ant-voice stop to end any remaining session.')

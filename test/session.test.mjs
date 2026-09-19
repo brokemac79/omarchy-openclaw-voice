@@ -22,10 +22,21 @@ async function waitCreate(calls) {
 }
 test('Stop during provider startup closes the late grant and never activates it', async () => {
   const f = fixture(); const pending = f.session.create();
-  await waitCreate(f.calls); await f.session.close(); f.finish();
+  await waitCreate(f.calls); const closing = f.session.close(); f.finish();
   await assert.rejects(pending, /cancelled/);
+  await closing;
   assert.equal(f.session.grant, null);
   assert.equal(f.calls.filter(c => c.method === 'talk.client.close').length, 1);
+});
+
+test('Stop waits for an in-flight reservation to be released before a restart', async () => {
+  const f = fixture(); const pending = f.session.create(); await waitCreate(f.calls);
+  let closed = false; const closing = f.session.close().then(() => { closed = true; });
+  await new Promise(r => setImmediate(r)); assert.equal(closed, false);
+  f.finish(); await assert.rejects(pending, /cancelled/); await closing;
+  assert.equal(f.session.creating, false);
+  const restarted = f.session.create(); await new Promise(r => setImmediate(r)); f.finish();
+  await restarted; await f.session.close();
 });
 test('duplicate startup is rejected and invalid grants are closed', async () => {
   const f = fixture(); const pending = f.session.create(); await waitCreate(f.calls);

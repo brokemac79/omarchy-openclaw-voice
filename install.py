@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+from tools.install_files import FilePlan
 import shutil
 import subprocess
 
@@ -17,37 +18,27 @@ node = str(Path(args.node).resolve())
 major = int(subprocess.check_output([node, '-p', 'process.versions.node.split(".")[0]'], text=True))
 if major < 22:
     parser.error('Node.js 22 or newer is required.')
-for command in ('chromium', 'omarchy', 'systemctl'):
+for command in ('omarchy', 'systemctl', 'hyprctl'):
     if not shutil.which(command):
         parser.error(f'{command} is required. No packages are installed by this script.')
 source = Path(__file__).resolve().parent
+subprocess.run(['/usr/bin/python3', str(source / 'native/audio.py'), '--check'], check=True)
 home = Path.home()
 config = Path(os.environ.get('XDG_CONFIG_HOME', home / '.config'))
 data = Path(os.environ.get('XDG_DATA_HOME', home / '.local/share'))
 state = Path(os.environ.get('XDG_STATE_HOME', home / '.local/state'))
 target = data / 'ant-voice'
 backup = state / 'ant-voice/backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-backup.mkdir(parents=True, mode=0o700)
-records = []
+plan = FilePlan(backup)
+put = plan.put
 
-def put(path, content, mode=0o600):
-    path = Path(path)
-    old = None
-    if path.exists():
-        old = backup / path.relative_to(home)
-        old.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, old)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content if isinstance(content, bytes) else content.encode())
-    path.chmod(mode)
-    records.append({'path': str(path), 'backup': str(old) if old else None})
-    (backup / 'manifest.json').write_text(json.dumps(records, indent=2))
-
-subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=False)
-for directory in ('src', 'engine'):
+for directory in ('src', 'native'):
     for file in (source / directory).glob('*'):
         if file.is_file():
             put(target / directory / file.name, file.read_bytes())
+# Remove only known obsolete app-owned browser assets, retaining their backups.
+for old in ('src/browser.mjs', 'engine/app.js', 'engine/index.html'):
+    plan.remove(target / old)
 for name in ('LICENSE', 'LICENSE-OMA', 'CREDITS.md', 'package.json'):
     put(target / name, (source / name).read_bytes())
 put(home / '.local/bin/ant-voice', (source / 'bin/ant-voice').read_bytes(), 0o755)
@@ -97,7 +88,14 @@ if 'require("hypr.ant-voice")' not in text:
 shell = config / 'omarchy/shell.json'
 if shell.exists():
     put(shell, shell.read_bytes())  # Snapshot before the supported CLI changes layout.
-(backup / 'manifest.json').write_text(json.dumps(records, indent=2))
+# Validate every destination before stopping the service or changing any file.
+plan.validate()
+# Refuse to overwrite a running installation if systemd cannot stop its unit.
+load_state = subprocess.check_output(['systemctl', '--user', 'show', 'ant-voice.service',
+                                      '--property=LoadState', '--value'], text=True).strip()
+if load_state != 'not-found':
+    subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=True)
+plan.apply()
 subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
 for plugin in ('ant.orb', 'ant.indicator'):
     subprocess.run(['omarchy', 'plugin', 'validate', str(config / 'omarchy/plugins' / plugin)], check=True)

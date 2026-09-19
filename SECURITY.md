@@ -1,15 +1,15 @@
 # Security and privacy
 
-The local bridge listens only on loopback and requires a random per-process
-capability token, with Host and Origin checks. Its token and native state are
-stored under the user's runtime directory with restrictive permissions. The
-background browser receives its token in memory, not a URL or command line.
-Only one audio controller can connect at a time.
+The service accepts launcher commands through a Unix socket with mode `0600`
+in a `0700` user runtime directory. There is no TCP listener, web page, browser
+capability token or HTTP control API. One service owns the socket and one audio
+worker owns a call. The worker receives SDP and stable audio device names over
+stdio; OpenClaw credentials stay in the Node service and OpenClaw's own store.
 
 The gateway connection uses existing OpenClaw device authentication and broad
 operator scopes needed by the integration. Treat access to the local user
 account, paired device store and gateway as trusted administrative access.
-The loopback token is not a defence against an attacker who controls that user.
+Unix permissions are not a defence against an attacker who controls that user.
 
 The app starts audio only on explicit invocation, releases media on Stop and
 disconnect, and does not reconnect a microphone automatically. It requests only

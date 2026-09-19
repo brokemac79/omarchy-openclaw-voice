@@ -11,6 +11,7 @@ the diff and run:
 
 ```sh
 npm test
+python3 -m unittest discover -s test -p 'test_*.py'
 git diff --cached --check
 python3 tools/check_public_files.py --staged
 python3 tools/check_public_files.py --history HEAD
@@ -27,3 +28,8 @@ For an explicitly authorized live smoke test, stop the installed service, run
 `ANT_VOICE_LIVE_TEST=1 node test/live-smoke.mjs`. The test refuses a daemon that
 has real microphone capture enabled. Stop the test daemon before restoring the
 normal service. Never add the test environment flag to the installed service.
+
+On Linux with the audio dependencies installed, also run
+`python3 test/native_audio.py`. This offline check uses generated audio and fake
+sinks; it must never open physical input/output devices. Windows skips Unix
+socket and symlink cases, so Linux validation is required before release.
