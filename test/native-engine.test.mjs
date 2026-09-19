@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
+import { createServer } from 'node:http';
 import { launchEngine } from '../src/native-engine.mjs';
 const tick = () => new Promise(r => setImmediate(r));
 function fixture() {
@@ -34,7 +35,10 @@ test('stop during grant acquisition never starts the native pipeline', async () 
 test('late SDP response after stop cannot reach a replacement worker', async () => {
   const f = fixture(); let finish, signal;
   const engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true,
-    exchange: async (_, options) => { signal = options.signal; return new Promise(r => { finish = r; }); } });
+    exchange: async (url, options) => {
+      assert.equal(url, 'https://example.com/plugins/openai/realtime/calls');
+      signal = options.signal; return new Promise(r => { finish = r; });
+    } });
   await engine.start(); f.child.stdout.write(JSON.stringify({ event: 'offer', sdp: 'v=0\r\nm=audio test' }) + '\n');
   await tick(); await engine.close(); assert.equal(signal.aborted, true);
   finish({ ok: true, text: async () => 'v=0 synthetic answer' }); await tick();
@@ -50,4 +54,33 @@ test('spawn failure closes promptly instead of waiting for a nonexistent exit ev
   const f = fixture();
   const spawnWorker = () => { queueMicrotask(() => { f.child.emit('error', new Error('ENOENT')); f.child.emit('close', -1); }); return f.child; };
   await assert.rejects(launchEngine(f.config, f.session, { spawnWorker }));
+});
+
+test('a local gateway receives the SDP offer over loopback HTTP with only the session credential', { timeout: 5000 }, async () => {
+  const f = fixture();
+  let request;
+  const server = createServer((req, res) => {
+    request = { method: req.method, url: req.url, authorization: req.headers.authorization, body: '' };
+    req.on('data', chunk => { request.body += chunk; });
+    req.on('end', () => { res.writeHead(200, { 'Content-Type': 'application/sdp' }); res.end('v=0 synthetic answer'); });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  f.config.gatewayUrl = `ws://127.0.0.1:${server.address().port}`;
+  f.config.gatewayAuth = { token: 'synthetic-gateway-token' };
+  let engine;
+  try {
+    engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true });
+    await engine.start();
+    f.child.stdout.write(JSON.stringify({ event: 'offer', sdp: 'v=0\r\nm=audio synthetic' }) + '\n');
+    const deadline = Date.now() + 2000;
+    while (!f.commands.some(c => c.command === 'answer') && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.deepEqual(request, { method: 'POST', url: '/plugins/openai/realtime/calls',
+      authorization: 'Bearer synthetic', body: 'v=0\r\nm=audio synthetic' });
+    assert.equal(f.commands.find(c => c.command === 'answer')?.sdp, 'v=0 synthetic answer');
+  } finally {
+    await engine?.close(); server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  }
 });

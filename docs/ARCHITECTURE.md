@@ -10,7 +10,7 @@ HTML, HTTP endpoints and browser device identifiers have been removed.
 ```text
 Shortcut / OMA bar -> private Unix socket -> Node / OpenClaw GatewayClient
                                              |          |
-                                      private stdio     authenticated WSS
+                                      private stdio     authenticated WS/WSS
                                              |          |
                                       GStreamer     OpenClaw agent
                                              |          |
@@ -37,6 +37,9 @@ Shortcut / OMA bar -> private Unix socket -> Node / OpenClaw GatewayClient
   no shared gateway patch is required for this working client path.
 - **Node GatewayClient:** retains OpenClaw's existing paired-device auth and
   session/agent controls instead of recreating its authentication protocol.
+  A local gateway uses authenticated loopback WS and HTTP; remote gateways
+  require WSS and HTTPS unless reached through a loopback tunnel. Initial
+  token/password credentials come from the selected gateway's configuration.
 - **Unix socket + stdio:** standard local process interfaces. No loopback web
   server, browser token, SSE channel or network-accessible control endpoint.
 

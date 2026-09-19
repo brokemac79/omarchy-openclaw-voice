@@ -32,6 +32,15 @@ test('remote gateway must be a secure origin without embedded credentials', () =
   assert.equal(validateGateway('wss://example.com/'), 'wss://example.com');
   for (const input of ['ws://example.com', 'wss://user:password@example.com', 'wss://example.com/path', 'wss://example.com/?token=test']) assert.throws(() => validateGateway(input));
 });
+test('plaintext gateway transport is limited to loopback', () => {
+  for (const host of ['127.0.0.1', 'localhost', '[::1]']) {
+    assert.equal(validateGateway(`ws://${host}:18789`), `ws://${host}:18789`);
+  }
+  for (const input of ['ws://192.0.2.1:18789', 'ws://0.0.0.0:18789', 'ws://localhost.example.com',
+    'ws://user:pass@127.0.0.1', 'ws://127.0.0.1/?token=synthetic', 'http://127.0.0.1']) {
+    assert.throws(() => validateGateway(input));
+  }
+});
 test('invalid audio levels cannot poison QML state', () => {
   assert.equal(level(NaN), 0); assert.equal(level(Infinity), 0); assert.equal(level('1'), 0);
   assert.equal(level(-1), 0); assert.equal(level(2), 1); assert.equal(level(0.5), 0.5);

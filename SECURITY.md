@@ -6,6 +6,12 @@ capability token or HTTP control API. One service owns the socket and one audio
 worker owns a call. The worker receives SDP and stable audio device names over
 stdio; OpenClaw credentials stay in the Node service and OpenClaw's own store.
 
+Plain WebSocket/HTTP gateway connections are restricted to loopback origins.
+Non-loopback gateways require TLS. Gateway token/password credentials are used
+only for the selected local or remote gateway; local credentials are never
+sent to a remote target. The HTTP voice offer uses only its scoped session
+credential, never the gateway token. Unsupported secret references fail closed.
+
 The gateway connection uses existing OpenClaw device authentication and broad
 operator scopes needed by the integration. Treat access to the local user
 account, paired device store and gateway as trusted administrative access.

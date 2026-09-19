@@ -24,8 +24,10 @@ export function checkGrant(grant) {
 
 export function validateGateway(value) {
   const url = new URL(value);
-  if (url.protocol !== 'wss:' || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
-    throw new Error('Configure a secure wss:// gateway origin in OpenClaw.');
+  const loopback = ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
+  if ((url.protocol !== 'wss:' && !(url.protocol === 'ws:' && loopback)) ||
+      url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw new Error('Use a wss:// gateway origin, or ws:// on loopback only.');
   }
   return url.origin;
 }

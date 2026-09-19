@@ -20,7 +20,7 @@ echo cancellation, speaker audio and WebRTC through Omarchy's PipeWire audio
 server. The launcher uses a private Unix socket. No browser or local HTTP server
 is required. See [the architecture decision](docs/ARCHITECTURE.md).
 
-The bridge connects to your existing remote OpenClaw gateway. It requests
+The bridge connects to your existing local or remote OpenClaw gateway. It requests
 `gpt-live-1-codex` with `brain: agent-consult` so your selected agent supplies
 tools, memory and reasoning through OpenClaw. Voice controls and approvals
 remain owned by the gateway. Clicking the icon never approves a pending action.
@@ -48,11 +48,45 @@ path. It does not patch the gateway or replace its authentication.
 - An OpenClaw installation exposing `dist/plugin-sdk/gateway-runtime.js`, plus
   its runtime dependencies. Initial integration used OpenClaw client 2026.9.4 and
   gateway 2026.9.5; the Talk APIs can change between releases.
-- A reachable remote gateway configured in `~/.openclaw/openclaw.json`, a paired
-  device with the needed operator scopes, and working GPT-Live ChatGPT OAuth.
+- A local or remote gateway configured in `~/.openclaw/openclaw.json`, gateway
+  authentication with the needed operator scopes, and working GPT-Live ChatGPT OAuth.
 
 Existing OpenClaw credentials remain in OpenClaw's own private store. Do not
 copy gateway tokens, OAuth credentials or personal configuration into this repo.
+
+## Local and remote OpenClaw
+
+A VPS is optional. With OpenClaw and this app on the same Omarchy machine,
+`gateway.mode: "local"` selects `ws://127.0.0.1:18789` (or `gateway.port`). The app
+reads the existing `gateway.auth.token` or `gateway.auth.password` for the initial
+connection; OpenClaw still handles device authentication and permissions. An
+explicit local mode ignores any stale remote address in the configuration.
+
+With `gateway.mode: "remote"`, the app uses `gateway.remote.url` and that remote's
+credentials or existing paired-device authentication. Older configurations with
+a remote URL but no mode remain supported. A missing remote URL is an error;
+the app does not silently switch agents by falling back to a local gateway.
+
+Plain `ws://` is accepted only for `127.0.0.1`, `localhost` and `[::1]`. Other
+hosts require `wss://`. Voice-session offers use HTTP on loopback and HTTPS for
+secure gateways. Local OpenClaw can keep its normal loopback binding; no LAN
+exposure, VPS or reverse proxy is needed. Local TLS uses `gateway.tls.enabled`
+and requires a certificate trusted by Node for both WebSocket and HTTPS.
+
+ChatGPT OAuth must be configured on whichever gateway runs your agent. Running
+OpenClaw locally does **not** make GPT-Live an offline model. The same OAuth-only
+voice checks and OpenClaw approval rules apply to both locations.
+
+The app reads JSON configuration. `OPENCLAW_CONFIG_PATH`, `OPENCLAW_STATE_DIR`,
+`OPENCLAW_HOME` and a local `OPENCLAW_GATEWAY_PORT` are supported when supplied to
+the voice service. Local authentication can also use `OPENCLAW_GATEWAY_TOKEN` or
+`OPENCLAW_GATEWAY_PASSWORD`. These local credentials are never reused for a remote
+gateway. Literal secrets, `${ENV_VAR}` and environment SecretRefs are supported;
+file/exec SecretRefs are rejected. A systemd service does not inherit variables
+exported only in an interactive terminal. Keep any environment file private.
+
+See [the local validation notes](docs/LOCAL-GATEWAY.md) for tested behavior and
+the remaining full-conversation check.
 
 ## Install
 

@@ -28,7 +28,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
     if (offered || !started || !grant || typeof sdp !== 'string' || sdp.length > 131072 ||
         !sdp.startsWith('v=0') || !sdp.includes('m=audio') || /m=(video|application)/.test(sdp)) throw new Error('Invalid offer.');
     offered = true;
-    const response = await exchange(config.gatewayUrl.replace(/^wss:/, 'https:') + OFFER_PATH, {
+    const response = await exchange(config.gatewayUrl.replace(/^ws(s?):/, 'http$1:') + OFFER_PATH, {
       method: 'POST', redirect: 'error',
       signal: AbortSignal.any([aborter.signal, AbortSignal.timeout(25000)]),
       headers: { Authorization: `Bearer ${grant.clientSecret}`, 'Content-Type': 'application/sdp' }, body: sdp,
