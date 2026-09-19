@@ -1,4 +1,4 @@
-# Ant Voice for Omarchy
+# Omarchy OpenClaw Voice
 
 Talk to your OpenClaw agent through **OMA's native Omarchy orb and bar icon**.
 Press **Super+Shift+V** or click the microphone icon to start; repeat to stop.
