@@ -1,7 +1,8 @@
 # Omarchy OpenClaw Voice
 
 Talk to your OpenClaw agent through **OMA's native Omarchy orb and bar icon**.
-Press **Super+Shift+V** or click the microphone icon to start; repeat to stop.
+Press **Super+Shift+V** or click the **OpenClaw lobster-and-microphone icon** to
+start; repeat to stop. A green dot marks an active call; amber marks an error.
 The orb appears at the bottom of the screen, follows your Omarchy theme and
 responds to incoming and outgoing audio. It does not take keyboard focus or
 block clicks on your work.

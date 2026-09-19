@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: MIT
 // Adapted from wombatoperator/omarchy-voice; see CREDITS.md and LICENSE-OMA.
 
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import qs.Ui
@@ -25,18 +28,6 @@ BarWidget {
       }
     }
   }
-
-  readonly property var icons: ({
-    "stopped":   "󰍭",
-    "idle":      "󰍬",
-    "listening": "󰍬",
-    "thinking":  "󱚟",
-    "acting":    "󱐋",
-    "confirm":   "󰀦",
-    "error":     "󰍭",
-    // Gateway OAuth has not been configured yet.
-    "unconfigured": "󰍭"
-  })
 
   FileView {
     id: state
@@ -67,12 +58,38 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.icons[root.status] || root.icons["idle"]
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-    tooltipText: root.label !== ""
-                 ? root.status + " — " + root.label
-                 : "OpenClaw Voice: " + root.status
+    tooltipText: "OpenClaw Voice — " + (root.label !== "" ? root.label : root.status)
+    Accessible.role: Accessible.Button
+    Accessible.name: "OpenClaw Voice"
+    Accessible.description: button.tooltipText
+    Accessible.onPressAction: button.triggerPress(Qt.LeftButton)
+
+    iconComponent: Item {
+      Image {
+        anchors.fill: parent
+        source: Qt.resolvedUrl("openclaw-voice.svg")
+        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        opacity: root.status === "stopped" || root.status === "unconfigured" ? 0.5 : 1
+      }
+
+      // Keep the assistant's identity visible; only the small status dot changes.
+      Rectangle {
+        visible: button.active || root.status === "error"
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        width: Math.max(5, Math.round(parent.width * 0.28))
+        height: width
+        radius: width / 2
+        color: root.status === "error" ? "#ffb454" : "#5de4c7"
+        border.width: 1
+        border.color: button.foreground
+      }
+    }
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
       root.bar.run(Quickshell.env("HOME") + "/.local/bin/openclaw-voice toggle")

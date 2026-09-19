@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- OpenClaw favicon adapted for a small voice-assistant control.
+       Copyright (c) 2026 OpenClaw Foundation.
+       Modifications Copyright (c) 2026 brokemac79.
+       SPDX-License-Identifier: MIT. See LICENSE-OPENCLAW and CREDITS.md. -->
+  <g fill="#f56565">
+    <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z"/>
+    <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z"/>
+    <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z"/>
+  </g>
+  <path d="M45 15 Q35 5 30 8 M75 15 Q85 5 90 8" stroke="#f56565" stroke-width="6" stroke-linecap="round"/>
+  <g fill="#181b26">
+    <circle cx="44" cy="33" r="7"/>
+    <circle cx="76" cy="33" r="7"/>
+  </g>
+  <!-- A clear microphone capsule and cradle in the lobster's body. -->
+  <rect x="50" y="48" width="20" height="30" rx="10" fill="#ffffff"/>
+  <path d="M40 66 V71 C40 82 49 90 60 90 C71 90 80 82 80 71 V66 M60 90 V102 M50 103 H70"
+        stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
