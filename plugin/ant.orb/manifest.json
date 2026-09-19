@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "ant.orb",
+  "name": "Ant Voice orb",
+  "version": "0.2.0",
+  "author": "brokemac79; interface by omarchy-voice contributors",
+  "description": "OMA interface for OpenClaw GPT-Live voice. Click the bar icon to start or stop.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "VoiceOrb.qml"
+  }
+}

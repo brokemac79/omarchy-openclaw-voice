@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Control the OMA-derived native interface. Microphone opens only on toggle."""
+from pathlib import Path
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
+if mode == 'open':
+    mode = 'toggle'
+if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
+    raise SystemExit('Usage: ant-voice [toggle|stop|mute|status|preflight]')
+runtime = os.environ.get('XDG_RUNTIME_DIR')
+if not runtime:
+    raise SystemExit('Run Ant Voice inside your desktop session.')
+connection = Path(runtime) / 'ant-voice/connection.json'
+subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True)
+
+def request(path, method='GET'):
+    data = json.loads(connection.read_text())
+    req = urllib.request.Request(data['origin'] + path, method=method,
+                                 headers={'x-ant-voice-key': data['key']})
+    with urllib.request.urlopen(req, timeout=25) as response:
+        return json.load(response)
+
+try:
+    for attempt in range(60):
+        try:
+            status = request('/status')
+            if mode in {'stop', 'status'} or status['connected']:
+                break
+        except (OSError, ValueError):
+            pass
+        time.sleep(0.2)
+    else:
+        raise RuntimeError('Ant Voice could not connect. Check the gateway and Tailscale.')
+    result = request('/' + mode, 'GET' if mode in {'status', 'preflight'} else 'POST')
+    print(json.dumps(result))
+except (OSError, ValueError, RuntimeError) as error:
+    subprocess.run(['notify-send', 'Ant Voice', 'Could not connect. Check the gateway and audio setup.'], check=False)
+    raise SystemExit('Ant Voice unavailable; microphone has not been started by this command.') from error

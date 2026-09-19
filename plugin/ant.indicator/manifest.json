@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "ant.indicator",
+  "name": "Ant Voice",
+  "version": "0.2.0",
+  "author": "brokemac79; interface by omarchy-voice contributors",
+  "description": "OMA interface for OpenClaw GPT-Live voice. Click the bar icon to start or stop.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "VoiceIndicator.qml"
+  },
+  "barWidget": {
+    "displayName": "Ant Voice",
+    "description": "OpenClaw voice with the OMA interface",
+    "category": "Audio",
+    "allowMultiple": false
+  }
+}

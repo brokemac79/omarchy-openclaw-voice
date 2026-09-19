@@ -1,0 +1,17 @@
+node_modules/
+__pycache__/
+.env*
+*.log
+*.jsonl
+*.wav
+*.mp3
+*.webm
+*.png
+*.jpg
+*.zip
+*.tar*
+coverage/
+docs/private/
+benchmarks/
+config.json
+.DS_Store

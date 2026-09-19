@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Install user-owned files with backups; never record audio during installation."""
+import argparse
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--node', default=shutil.which('node'))
+args = parser.parse_args()
+if not args.node or not Path(args.node).is_file():
+    parser.error('Node.js is required; pass --node /path/to/node if needed.')
+node = str(Path(args.node).resolve())
+major = int(subprocess.check_output([node, '-p', 'process.versions.node.split(".")[0]'], text=True))
+if major < 22:
+    parser.error('Node.js 22 or newer is required.')
+for command in ('chromium', 'omarchy', 'systemctl'):
+    if not shutil.which(command):
+        parser.error(f'{command} is required. No packages are installed by this script.')
+source = Path(__file__).resolve().parent
+home = Path.home()
+config = Path(os.environ.get('XDG_CONFIG_HOME', home / '.config'))
+data = Path(os.environ.get('XDG_DATA_HOME', home / '.local/share'))
+state = Path(os.environ.get('XDG_STATE_HOME', home / '.local/state'))
+target = data / 'ant-voice'
+backup = state / 'ant-voice/backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+backup.mkdir(parents=True, mode=0o700)
+records = []
+
+def put(path, content, mode=0o600):
+    path = Path(path)
+    old = None
+    if path.exists():
+        old = backup / path.relative_to(home)
+        old.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, old)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content if isinstance(content, bytes) else content.encode())
+    path.chmod(mode)
+    records.append({'path': str(path), 'backup': str(old) if old else None})
+    (backup / 'manifest.json').write_text(json.dumps(records, indent=2))
+
+subprocess.run(['systemctl', '--user', 'stop', 'ant-voice.service'], check=False)
+for directory in ('src', 'engine'):
+    for file in (source / directory).glob('*'):
+        if file.is_file():
+            put(target / directory / file.name, file.read_bytes())
+for name in ('LICENSE', 'LICENSE-OMA', 'CREDITS.md', 'package.json'):
+    put(target / name, (source / name).read_bytes())
+put(home / '.local/bin/ant-voice', (source / 'bin/ant-voice').read_bytes(), 0o755)
+for plugin in ('ant.orb', 'ant.indicator'):
+    for file in (source / 'plugin' / plugin).iterdir():
+        if file.is_file():
+            put(config / 'omarchy/plugins' / plugin / file.name, file.read_bytes())
+    put(config / 'omarchy/plugins' / plugin / 'CREDITS.md', (source / 'CREDITS.md').read_bytes())
+
+def quote(value):
+    return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
+
+put(config / 'systemd/user/ant-voice.service', f'''[Unit]
+Description=Ant Voice - OMA interface for OpenClaw
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart={quote(node)} {quote(target / 'src/server.mjs')}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+
+# Started on demand. Installing does not enable microphone capture or login startup.
+''')
+put(data / 'applications/ant-voice.desktop', f'''[Desktop Entry]
+Type=Application
+Name=Ant Voice
+Comment=Start or end your OpenClaw voice conversation
+Exec="{home}/.local/bin/ant-voice" toggle
+Icon=audio-input-microphone
+Terminal=false
+Categories=AudioVideo;Audio;
+''')
+# This file is owned by Ant Voice, so it also replaces the old browser-card rule.
+put(config / 'hypr/ant-voice.lua', f'''-- Ant Voice native OMA orb; starts only on explicit invocation.
+hl.unbind("SUPER + SHIFT + V")
+o.bind("SUPER + SHIFT + V", "Talk to Ant / end voice", {json.dumps(str(home / '.local/bin/ant-voice'))} .. " toggle")
+''')
+hypr = config / 'hypr/hyprland.lua'
+text = hypr.read_text()
+if 'require("hypr.ant-voice")' not in text:
+    put(hypr, text.rstrip() + '\n\nrequire("hypr.ant-voice")\n')
+shell = config / 'omarchy/shell.json'
+if shell.exists():
+    put(shell, shell.read_bytes())  # Snapshot before the supported CLI changes layout.
+(backup / 'manifest.json').write_text(json.dumps(records, indent=2))
+subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
+for plugin in ('ant.orb', 'ant.indicator'):
+    subprocess.run(['omarchy', 'plugin', 'validate', str(config / 'omarchy/plugins' / plugin)], check=True)
+    subprocess.run(['omarchy', 'plugin', 'enable', plugin], check=True)
+subprocess.run(['omarchy', 'bar', 'move', 'ant.indicator', '--section', 'right'], check=True)
+subprocess.run(['hyprctl', 'reload'], check=True)
+errors = subprocess.check_output(['hyprctl', 'configerrors'], text=True).strip()
+if errors and errors != 'ok':
+    raise SystemExit('Hyprland reported configuration errors. Inspect hyprctl configerrors.')
+subprocess.run(['systemctl', '--user', 'start', 'ant-voice.service'], check=True)
+print('Installed. Microphone off. Super+Shift+V now controls the native OMA interface.')
+print('Backups:', backup)
