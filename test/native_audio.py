@@ -18,17 +18,26 @@ def prove_media():
         'webrtcbin name=rtc bundle-policy=max-bundle '
         'audiotestsrc is-live=true wave=sine freq=880 volume=0.25 ! '
         'audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=1 ! '
-        'opusenc ! rtpopuspay pt=111 ! '
+        'opusenc ! rtpopuspay name=sender pt=111 ! '
         'application/x-rtp,media=audio,encoding-name=OPUS,payload=111,clock-rate=48000 ! rtc. '
         'queue name=incoming ! rtpopusdepay ! opusdec ! audioconvert ! '
         'level name=received interval=80000000 ! fakesink sync=true async=false'
     )
     rtc = peer.get_by_name('rtc')
-    evidence = {'send': False, 'receive': False, 'muted': False}
+    evidence = {'send': False, 'receive': False, 'loss_concealed': False, 'muted': False}
     failures = []
     phase = ['audio', 0.0]
     latest_received = [-100.0]
     answer_sent = [False]
+    sent_packets = [0]
+
+    def drop_packet(_pad, _info):
+        # Deterministic loss on the fake peer only: exercise actual WebRTC gap
+        # signalling and Opus concealment, not just a configured property.
+        sent_packets[0] += 1
+        return Gst.PadProbeReturn.DROP if sent_packets[0] % 10 == 0 else Gst.PadProbeReturn.OK
+
+    peer.get_by_name('sender').get_static_pad('src').add_probe(Gst.PadProbeType.BUFFER, drop_packet)
 
     def fail(reason):
         failures.append(reason)
@@ -80,7 +89,10 @@ def prove_media():
                     evidence['send'] = True
 
     def inspect():
-        if phase[0] == 'audio' and evidence['send'] and evidence['receive']:
+        stats = worker.pipeline.get_by_name('decoder').get_property('stats')
+        if stats and stats.get_value('plc-num-samples') > 0:
+            evidence['loss_concealed'] = True
+        if phase[0] == 'audio' and evidence['send'] and evidence['receive'] and evidence['loss_concealed']:
             phase[:] = ['mute', time.monotonic()]
             worker.command({'command': 'mute', 'muted': True})
         elif phase[0] == 'mute' and time.monotonic() - phase[1] > 2:
@@ -111,7 +123,7 @@ def prove_media():
     assert not failures, failures
     assert all(evidence.values()), evidence
     assert worker.pipeline.get_state(Gst.SECOND)[1] == Gst.State.NULL
-    print('PASS: native send, receive, mute on wire and pipeline release; no physical audio devices.')
+    print('PASS: native send, receive with packet loss concealment, mute and release; no physical audio devices.')
 
 
 def prove_eof():

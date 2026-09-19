@@ -51,6 +51,8 @@ Item {
 
   property string status: "stopped"
   property string label: ""
+  property string userWords: ""
+  property string replyWords: ""
   // Loudness 0..1 of each side of the conversation, straight off the daemon.
   property real youLevel: 0
   property real omaLevel: 0
@@ -135,16 +137,20 @@ Item {
         const parsed = JSON.parse(stateFile.text())
         root.status = parsed.status || "idle"
         root.label = parsed.text || ""
+        root.userWords = typeof parsed.user === "string" ? parsed.user : ""
+        root.replyWords = typeof parsed.assistant === "string" ? parsed.assistant : ""
         root.updatedAt = Number(parsed.updated) || 0
       } catch (e) {
         root.status = "error"
         root.label = ""
+        root.userWords = root.replyWords = ""
         root.updatedAt = 0
       }
     }
     onLoadFailed: {
       root.status = "stopped"
       root.label = ""
+      root.userWords = root.replyWords = ""
       root.updatedAt = 0
     }
   }
@@ -209,6 +215,24 @@ Item {
     // Visual only. An empty input region means clicks land on whatever is
     // underneath — the orb must never eat a click meant for the desktop.
     mask: Region {}
+
+    Column {
+      anchors { top: parent.top; right: parent.right; topMargin: 52; rightMargin: 18 }
+      width: Math.min(380, parent.width - 36)
+      spacing: 10
+      visible: root.awake && root.status !== "error"
+      TranscriptBubble {
+        width: parent.width
+        speaker: "You"
+        words: root.userWords
+      }
+      TranscriptBubble {
+        width: parent.width
+        speaker: "OpenClaw"
+        words: root.replyWords
+        replying: root.status === "acting"
+      }
+    }
 
     Item {
       id: stage
@@ -499,8 +523,7 @@ Item {
         }
       }
 
-      // ---- what it heard ---------------------------------------------------
-      // Outside `body`, so the caption stays put while the orb pulses.
+      // Connection status stays by the orb; the conversation is at top right.
       Text {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.bottom

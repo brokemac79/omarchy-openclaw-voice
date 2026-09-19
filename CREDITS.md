@@ -9,7 +9,7 @@ Upstream source revision: `8ef9d6094cff87ad88903481de2b6b4e942c4e86`.
 
 | This repository | Upstream source | Changes |
 | --- | --- | --- |
-| `plugin/openclaw-voice.orb/VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, plain-text captions and duplex-audio comments |
+| `plugin/openclaw-voice.orb/VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, top-right conversation bubbles, plain-text captions and duplex-audio comments |
 | `plugin/openclaw-voice.indicator/VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, custom lobster/microphone icon, status dot, launcher command, stale-state handling; no click-to-confirm approval |
 | Plugin manifests | Corresponding OMA plugin manifests | Names, IDs, author credit, descriptions and version |
 | `tools/check_public_files.py` | Same path | Unchanged publication guard |
@@ -19,6 +19,10 @@ Upstream source revision: `8ef9d6094cff87ad88903481de2b6b4e942c4e86`.
 Copyright (c) 2026 omarchy-voice contributors. The notice is also distributed
 with each derived plugin. Integration code and modifications are MIT-licensed,
 Copyright (c) 2026 brokemac79.
+
+`plugin/openclaw-voice.orb/TranscriptBubble.qml` adds a themed, click-through
+conversation display for this integration. It uses the existing Omarchy theme
+and accompanies the OMA-derived orb.
 
 The custom bar icon, `plugin/openclaw-voice.indicator/openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision

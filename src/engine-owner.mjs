@@ -1,3 +1,5 @@
+import { Transcript } from './transcript.mjs';
+
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
   constructor({ session, launch, native, now = Date.now }) {
@@ -7,10 +9,12 @@ export class EngineOwner {
     this.cleanup = this.startup = Promise.resolve();
     this.lastSeen = this.startedAt = 0;
     this.phase = 'idle'; this.caption = 'Microphone off';
+    this.transcript = new Transcript();
   }
   start() {
     if (this.requested) return this.startup;
     this.requested = true; this.muted = this.muteConfirmed = false;
+    this.transcript.clear();
     const epoch = ++this.epoch, previous = this.startup;
     this.phase = 'thinking'; this.caption = 'Connecting to OpenClaw'; this.render();
     const work = (async () => {
@@ -39,6 +43,7 @@ export class EngineOwner {
     this.epoch++;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.native.levels(0, 0);
+    this.transcript.clear();
     this.phase = message ? 'error' : 'idle'; this.caption = message || 'Microphone off'; this.render();
     const old = this.engine; this.engine = null;
     // Release devices immediately, even when gateway cleanup is waiting for a late grant.
@@ -59,15 +64,16 @@ export class EngineOwner {
   }
   talk(data) {
     if (!this.requested) return;
-    const p = data.payload || {}, text = p.text ?? p.transcript ?? p.delta;
-    if (typeof text === 'string' && text) this.caption = text.slice(0, 240);
+    this.transcript.accept(data);
     const phases = { 'transcript.delta': 'listening', 'transcript.done': 'thinking',
       'output.audio.started': 'acting', 'output.audio.done': 'listening',
+      'output.text.delta': 'acting', 'output.text.done': 'listening',
       'turn.ended': 'listening', 'tool.call': 'acting' };
     if (phases[data.type]) this.phase = phases[data.type];
+    this.caption = { listening: 'Listening', thinking: 'Thinking', acting: 'OpenClaw is responding' }[this.phase] || this.caption;
     this.render();
   }
-  render() { this.native.set(this.phase, this.muteConfirmed ? 'Microphone muted' : this.caption); }
+  render() { this.native.set(this.phase, this.muteConfirmed ? 'Microphone muted' : this.caption, this.transcript.get()); }
   checkHealth() {
     if (!this.requested || !this.engine) return;
     // Heartbeats alone cannot keep a never-connected call alive indefinitely.

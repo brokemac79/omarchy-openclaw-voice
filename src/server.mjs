@@ -37,7 +37,7 @@ const { GatewayClient, startGatewayClientWhenEventLoopReady } = await import(pat
 const client = new GatewayClient({
   url: config.gatewayUrl, deviceAuthScope: config.gatewayUrl,
   ...config.gatewayAuth,
-  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.3.3', mode: 'backend',
+  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.3.4', mode: 'backend',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
   onHelloOk: () => { connected = true; if (!owner.requested) native.set('idle', 'Microphone off'); },

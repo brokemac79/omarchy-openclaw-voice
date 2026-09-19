@@ -6,6 +6,8 @@ start; repeat to stop. A green dot marks an active call; amber marks an error.
 The orb appears at the bottom of the screen, follows your Omarchy theme and
 responds to incoming and outgoing audio. It does not take keyboard focus or
 block clicks on your work.
+Themed speech bubbles at the top right show your words and OpenClaw's reply
+as they arrive. Long replies show a bounded excerpt; ending a call clears both.
 
 The interface is adapted from **[OMA by wombatoperator and contributors](https://github.com/wombatoperator/omarchy-voice)**,
 with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exact
@@ -145,9 +147,22 @@ does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.
 There is no wake-word listener in this version.
 
-The latest short caption and two audio levels are stored with private permissions
+OpenClaw requires a fresh confirmation for voice actions it classifies as
+high-impact, including computer/node control such as opening an app. Answer the
+specific request with a spoken **yes** or **no** while the same call is active.
+The gateway binds confirmation to that action; the app does not bypass it or
+approve by clicking the widget. See [OpenClaw's Talk confirmation rules](https://docs.openclaw.ai/nodes/talk/realtime-sessions).
+Spoken confirmation support is documented upstream; test the full exchange with
+your gateway version before relying on it.
+
+The current user/reply excerpt, short status and two audio levels are stored with private permissions
 under `$XDG_RUNTIME_DIR/openclaw-voice/`. The bridge does not save audio or transcript
 history. OpenClaw and the voice provider have their own session storage.
+
+Playback uses a 200 ms network jitter buffer and Opus packet-loss concealment.
+These reduce sensitivity to late or missing packets; they cannot repair a poor
+connection. If speech is distorted, check that the system or per-app volume is
+not boosted above 100% before changing audio routing.
 
 For problems, first run `openclaw-voice status`, then check the user service status
 and gateway Talk diagnostics privately. Do not post raw diagnostics containing

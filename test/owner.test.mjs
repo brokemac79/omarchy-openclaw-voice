@@ -58,3 +58,19 @@ test('slow gateway acquisition gets its own deadline before media heartbeats beg
   f.time(45000); f.owner.checkHealth(); assert.equal(f.owner.requested, true);
   f.time(55000); f.owner.checkHealth(); await tick(); assert.equal(f.owner.requested, false);
 });
+
+test('telemetry preserves both speech bubbles and stop or failure clears them', async () => {
+  const f = fixture(async () => ({ start: async () => {}, close: async () => {} }));
+  await f.owner.start();
+  f.owner.talk({ type: 'transcript.done', payload: { text: 'A question' } });
+  f.owner.talk({ type: 'output.text.delta', payload: { text: 'An answer' } });
+  f.owner.telemetry({ active: true, input: 0, output: 0.5 });
+  assert.deepEqual(f.states.at(-1)[2], { user: 'A question', assistant: 'An answer' });
+  await f.owner.stop('Connection failed');
+  assert.deepEqual(f.states.at(-1)[2], { user: '', assistant: '' });
+  f.owner.talk({ type: 'output.text.done', payload: { text: 'Late answer' } });
+  assert.deepEqual(f.states.at(-1)[2], { user: '', assistant: '' });
+  await f.owner.start();
+  assert.deepEqual(f.states.at(-1)[2], { user: '', assistant: '' });
+  await f.owner.stop();
+});

@@ -67,9 +67,10 @@ class AudioWorker:
         # The echo probe is created before capture starts, in the same pipeline.
         # PulseAudio elements connect to Omarchy's PipeWire compatibility server.
         description = (
-            'webrtcbin name=rtc bundle-policy=max-bundle latency=50 '
+            # Use the standard 200 ms jitter buffer, not an aggressive LAN-sized one.
+            'webrtcbin name=rtc bundle-policy=max-bundle latency=200 '
             'queue name=incoming max-size-time=200000000 max-size-buffers=0 max-size-bytes=0 ! '
-            'rtpopusdepay ! opusdec ! audioconvert ! audioresample ! '
+            'rtpopusdepay ! opusdec name=decoder plc=true use-inband-fec=true ! audioconvert ! audioresample ! '
             'audio/x-raw,format=S16LE,rate=48000,channels=1 ! '
             'level name=reply interval=80000000 ! webrtcechoprobe name=echo ! ' + sink + ' '
             + source + ' ! audioconvert ! audioresample ! '
@@ -166,6 +167,10 @@ class AudioWorker:
             self.fail('audio-pipeline-error')
         elif message.type == Gst.MessageType.EOS:
             self.fail('audio-device-ended')
+        elif message.type == Gst.MessageType.LATENCY:
+            # The receiving track appears after startup; update playback timing
+            # when its jitter buffer/decoder reports a new latency requirement.
+            self.pipeline.recalculate_latency()
         elif message.type == Gst.MessageType.ELEMENT:
             structure = message.get_structure()
             if structure and structure.get_name() == 'level':

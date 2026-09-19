@@ -65,9 +65,20 @@ a stale control socket. Systemd does not remove the shared runtime directory,
 so a rejected duplicate cannot disconnect the existing daemon.
 
 Only current captions and levels are stored in volatile private runtime files.
+Talk deltas are accumulated separately for the user and assistant; final events
+replace the partial utterance. Sequence numbers reject repeated or older text.
+The top-right bubbles render plain text and clear on stop or failure. They are
+part of the orb's click-through overlay and do not enter notification history.
 There is no wake-word listener, recording store or autonomous local approval.
 Speech uses the existing gateway ChatGPT OAuth route. Existing agent reasoning
 fallbacks remain unchanged and can have their own costs.
+
+The receive path uses GStreamer's standard 200 ms WebRTC jitter-buffer setting,
+Opus loss concealment and in-band error correction when the sender provides it.
+Latency messages trigger pipeline timing recalculation after the incoming track
+appears. Offline media tests deliberately drop packets and verify generated
+concealment samples, along with two-way audio, mute and device release. This
+does not prove physical speaker quality or establish the cause of every dropout.
 
 ## Sources
 
