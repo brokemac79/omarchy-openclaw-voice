@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { validateGateway } from './policy.mjs';
+import { resolveInstance } from './instance.mjs';
 
 function credential(value, env, field, secrets) {
   if (value === undefined || value === null || value === '') return undefined;
@@ -55,9 +56,10 @@ export function resolveGateway(openclaw, env = process.env) {
 }
 
 export async function loadConfig({ home = homedir(), env = process.env } = {}) {
+  const instance = resolveInstance(env);
   const configHome = env.XDG_CONFIG_HOME || join(home, '.config');
   let options = {};
-  try { options = JSON.parse(await readFile(join(configHome, 'openclaw-voice/config.json'), 'utf8')); }
+  try { options = JSON.parse(await readFile(join(configHome, instance.basename, 'config.json'), 'utf8')); }
   catch (e) { if (e.code !== 'ENOENT') throw e; }
   const userPath = (value, baseHome) => value?.trim() ? resolve(value.trim().replace(/^~(?=$|[\\/])/, () => baseHome)) : undefined;
   const openclawHome = userPath(env.OPENCLAW_HOME, home) || home;
@@ -65,6 +67,7 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
   const configPath = userPath(options.openclawConfig, openclawHome) || userPath(env.OPENCLAW_CONFIG_PATH, openclawHome) || join(stateDir, 'openclaw.json');
   const openclaw = JSON.parse(await readFile(configPath, 'utf8'));
   return {
+    instance,
     ...resolveGateway(openclaw, env),
     sdk: options.gatewaySdk || join(home, '.local/share/openclaw-node/node_modules/openclaw/dist/plugin-sdk/gateway-runtime.js'),
     python: options.python || '/usr/bin/python3',

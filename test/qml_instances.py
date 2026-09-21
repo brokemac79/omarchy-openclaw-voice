@@ -1,0 +1,64 @@
+"""Linux QML proof with synthetic state and a fake control executable; no audio."""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import uuid
+
+if not os.environ.get('WAYLAND_DISPLAY') or not os.environ.get('XDG_RUNTIME_DIR'):
+    raise SystemExit('Run in the Linux graphical session. No audio devices are used.')
+
+source = Path(__file__).resolve().parents[1]
+names = ['proof-' + uuid.uuid4().hex[:12] for _ in range(2)]
+runtime_dirs = []
+try:
+    with tempfile.TemporaryDirectory(prefix='voice-qml-') as directory:
+        root = Path(directory)
+        for module in ('Commons', 'Ui', 'services'):
+            target = Path('/usr/share/omarchy/shell') / module
+            if not target.is_dir():
+                raise SystemExit('Installed Omarchy shell modules are required.')
+            (root / module).symlink_to(target, target_is_directory=True)
+        for plugin in ('openclaw-voice.orb', 'openclaw-voice.indicator', 'openclaw-voice-shared'):
+            shutil.copytree(source / 'plugin' / plugin, root / 'plugin' / plugin)
+        for name, label in zip(names, ['Fixture A', 'Fixture B']):
+            runtime = Path(os.environ['XDG_RUNTIME_DIR']) / ('openclaw-voice-' + name)
+            runtime.mkdir(mode=0o700)
+            runtime_dirs.append(runtime)
+            (runtime / 'state.json').write_text(json.dumps({'status': 'idle', 'text': label, 'updated': 1}))
+            (runtime / 'level').write_text('0 0')
+        receipt = root / 'args.txt'
+        control = root / "control with 'quotes'; safe"
+        control.write_text('#!/usr/bin/python3\nfrom pathlib import Path\nimport sys\n'
+                           'Path(' + repr(str(receipt)) + ').write_text(repr(sys.argv[1:]))\n')
+        control.chmod(0o700)
+        qml = '''import QtQuick
+import Quickshell
+import "plugin/openclaw-voice.orb" as Orb
+import "plugin/openclaw-voice.indicator" as Indicator
+ShellRoot {
+  Orb.VoiceOrb { id: a; voiceInstance: FIRST }
+  Orb.VoiceOrb { id: b; voiceInstance: SECOND }
+  Indicator.VoiceIndicator { id: button; voiceInstance: FIRST; voiceControl: CONTROL }
+  Indicator.VoiceIndicator { id: missing; voiceInstance: SECOND }
+  Indicator.VoiceIndicator { id: invalid; voiceInstance: "../bad"; voiceControl: CONTROL }
+  Timer { interval: 700; running: true; onTriggered: {
+    if (a.label !== "Fixture A" || b.label !== "Fixture B" || button.label !== "Fixture A") throw Error("State isolation failed");
+    if (a.voiceRuntime === b.voiceRuntime || missing.configured || invalid.configured || invalid.voiceRuntime !== "") throw Error("Control isolation failed");
+    missing.toggleVoice(); invalid.toggleVoice(); button.toggleVoice();
+  } }
+  Timer { interval: 1500; running: true; onTriggered: Qt.quit() }
+}
+'''.replace('FIRST', json.dumps(names[0])).replace('SECOND', json.dumps(names[1])).replace('CONTROL', json.dumps(str(control)))
+        (root / 'shell.qml').write_text(qml)
+        result = subprocess.run(['quickshell', '--path', str(root / 'shell.qml'), '--no-color'],
+                                capture_output=True, text=True, timeout=10)
+        if result.returncode or not receipt.exists() or receipt.read_text() != "['toggle']":
+            print(result.stdout, result.stderr)
+            raise SystemExit('QML instance/control proof failed.')
+        print('PASS: actual QML state isolation, missing/invalid control refusal, and literal wrapper argv.')
+finally:
+    for runtime in runtime_dirs:
+        shutil.rmtree(runtime)

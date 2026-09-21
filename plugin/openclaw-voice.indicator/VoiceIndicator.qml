@@ -10,12 +10,27 @@ import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import qs.Ui
+import "../openclaw-voice-shared/Instance.js" as Instance
 
 // Reads the state file the daemon writes on every transition, so the bar
 // reflects what the assistant is doing without polling a process.
 BarWidget {
   id: root
   moduleName: "openclaw-voice.indicator"
+  property string voiceInstance: setting("voiceInstance", "default")
+  property string voiceControl: setting("voiceControl", "")
+  readonly property string voiceBasename: Instance.basename(voiceInstance)
+  readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
+  readonly property string controlPath: Instance.controlPath(voiceInstance, voiceControl, Quickshell.env("HOME"))
+  readonly property bool configured: voiceBasename !== "" && controlPath !== ""
+  function toggleVoice() {
+    if (configured && !control.running) control.running = true
+  }
+
+  Process {
+    id: control
+    command: [root.controlPath, "toggle"]
+  }
 
   property string status: "stopped"
   property string label: ""
@@ -31,7 +46,7 @@ BarWidget {
 
   FileView {
     id: state
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/openclaw-voice/state.json"
+    path: root.voiceRuntime ? root.voiceRuntime + "/state.json" : ""
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -60,7 +75,7 @@ BarWidget {
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-    tooltipText: "OpenClaw Voice — " + (root.label !== "" ? root.label : root.status)
+    tooltipText: "OpenClaw Voice — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : root.status))
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
     Accessible.description: button.tooltipText
@@ -79,20 +94,20 @@ BarWidget {
 
       // Keep the assistant's identity visible; only the small status dot changes.
       Rectangle {
-        visible: button.active || root.status === "error"
+        visible: button.active || root.status === "error" || !root.configured
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         width: Math.max(5, Math.round(parent.width * 0.28))
         height: width
         radius: width / 2
-        color: root.status === "error" ? "#ffb454" : "#5de4c7"
+        color: root.status === "error" || !root.configured ? "#ffb454" : "#5de4c7"
         border.width: 1
         border.color: button.foreground
       }
     }
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
-      root.bar.run(Quickshell.env("HOME") + "/.local/bin/openclaw-voice toggle")
+      root.toggleVoice()
     }
   }
 }

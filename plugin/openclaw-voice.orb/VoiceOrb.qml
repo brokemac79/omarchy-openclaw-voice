@@ -8,6 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import "../openclaw-voice-shared/Instance.js" as Instance
 
 // A glow at the bottom of the screen while voice control is awake, breathing
 // with whoever is talking to it — either of them.
@@ -48,6 +49,10 @@ import qs.Commons
 // colours of our own anywhere in here.
 Item {
   id: root
+  // Set per component, never by changing the shared desktop process environment.
+  property string voiceInstance: "default"
+  readonly property string voiceBasename: Instance.basename(voiceInstance)
+  readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
 
   property string status: "stopped"
   property string label: ""
@@ -129,7 +134,7 @@ Item {
 
   FileView {
     id: stateFile
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/openclaw-voice/state.json"
+    path: root.voiceRuntime ? root.voiceRuntime + "/state.json" : ""
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -161,7 +166,7 @@ Item {
   // re-arming a watch that often. It runs only while the orb is up.
   FileView {
     id: levelFile
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/openclaw-voice/level"
+    path: root.voiceRuntime ? root.voiceRuntime + "/level" : ""
     onLoaded: {
       // "<you> <oma>". A file written by an older daemon has one field; the
       // second reads as NaN and settles to zero, which is exactly the old
@@ -208,7 +213,7 @@ Item {
     visible: root.awake
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "openclaw-voice-orb"
+    WlrLayershell.namespace: root.voiceBasename + "-orb"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore

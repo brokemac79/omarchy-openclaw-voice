@@ -2,10 +2,12 @@
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { join } from 'node:path';
+import { resolveInstance } from '../src/instance.mjs';
+const instance = resolveInstance();
 if (process.env.OPENCLAW_VOICE_LIVE_TEST !== '1') throw new Error('Set OPENCLAW_VOICE_LIVE_TEST=1 to opt in.');
 async function request(command) {
   return new Promise((resolve, reject) => {
-    const client = net.connect(join(process.env.XDG_RUNTIME_DIR, 'openclaw-voice/control.sock'));
+    const client = net.connect(join(process.env.XDG_RUNTIME_DIR, instance.basename, 'control.sock'));
     let buffer = '';
     client.on('connect', () => client.write(JSON.stringify({ command: command.replace('/', '') }) + '\n'));
     client.setTimeout(35000, () => { client.destroy(); reject(new Error('Control timeout')); });

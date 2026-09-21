@@ -7,8 +7,52 @@ import sys
 import tempfile
 import threading
 import unittest
+import runpy
+from unittest.mock import patch
 
 LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
+
+
+class InstanceLauncherTests(unittest.TestCase):
+    def test_mapping_rejects_invalid_names_before_io(self):
+        module = runpy.run_path(str(LAUNCHER))
+        resolve = module['instance_basename']
+        for name, expected in [(None, 'openclaw-voice'), ('default', 'openclaw-voice'),
+                               ('test-a_1', 'openclaw-voice-test-a_1')]:
+            self.assertEqual(resolve({} if name is None else {'OPENCLAW_VOICE_INSTANCE': name}), expected)
+        for name in ['', '..', '../default', 'with space', 'a;true', 'A', 'x\n', 'a' * 33]:
+            with self.assertRaises(ValueError):
+                resolve({'OPENCLAW_VOICE_INSTANCE': name})
+            with patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': name}), \
+                    patch('socket.socket') as sock, patch('subprocess.run') as run, \
+                    patch.object(sys, 'argv', [str(LAUNCHER), 'toggle']):
+                with self.assertRaises(SystemExit):
+                    module['main']()
+                sock.assert_not_called()
+                run.assert_not_called()
+
+    def test_all_candidate_failure_paths_only_address_candidate_unit(self):
+        module = runpy.run_path(str(LAUNCHER))
+        for mode in ['toggle', 'stop', 'status']:
+            for failure in [False, True]:
+                with self.subTest(mode=mode, service_fails=failure), \
+                        patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': 'test', 'XDG_RUNTIME_DIR': '/tmp/test'}), \
+                        patch.object(sys, 'argv', [str(LAUNCHER), mode]), \
+                        patch('socket.AF_UNIX', 1, create=True), \
+                        patch('socket.socket', side_effect=OSError('synthetic control failure')), \
+                        patch('time.sleep'), patch('subprocess.run') as run:
+                    def command(args, **kwargs):
+                        if failure and args[0] == 'systemctl' and kwargs.get('check'):
+                            raise subprocess.CalledProcessError(1, args)
+                        return subprocess.CompletedProcess(args, 0)
+                    run.side_effect = command
+                    with self.assertRaises(SystemExit):
+                        module['main']()
+                    calls = [c.args[0] for c in run.call_args_list if c.args[0][0] == 'systemctl']
+                    self.assertTrue(calls)
+                    self.assertTrue(all(c[-1] == 'openclaw-voice-test.service' for c in calls), calls)
+                    if mode == 'toggle':
+                        self.assertIn(['systemctl', '--user', 'stop', 'openclaw-voice-test.service'], calls)
 
 
 @unittest.skipIf(os.name == 'nt', 'Linux launcher and Unix socket')

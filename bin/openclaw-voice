@@ -2,69 +2,87 @@
 """Control the native voice service through a private Unix socket."""
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
 import sys
 import time
 
-mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
-if mode == 'open':
-    mode = 'toggle'
-if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
-    raise SystemExit('Usage: openclaw-voice [toggle|stop|mute|status|preflight]')
-runtime = os.environ.get('XDG_RUNTIME_DIR')
-if not runtime:
-    raise SystemExit('Run OpenClaw Voice inside your desktop session.')
-path = str(Path(runtime) / 'openclaw-voice/control.sock')
+def instance_basename(env):
+    name = env.get('OPENCLAW_VOICE_INSTANCE', 'default')
+    if not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,31}', name):
+        raise ValueError('Invalid voice instance.')
+    return 'openclaw-voice' if name == 'default' else 'openclaw-voice-' + name
 
 
-def request(command):
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(32)
-        client.connect(path)
-        client.sendall((json.dumps({'command': command}) + '\n').encode())
-        with client.makefile('rb') as response:
-            data = json.loads(response.readline(65537))
-        if not data.get('ok'):
-            raise RuntimeError('Voice command failed.')
-        return data
-
-
-try:
-    if mode == 'stop':
-        # If control has failed, systemd still owns and can terminate all audio processes.
-        try:
-            result = request(mode)
-        except (OSError, ValueError, RuntimeError):
-            subprocess.run(['systemctl', '--user', 'stop', 'openclaw-voice.service'], check=True, timeout=25)
-            # A manually started daemon may be outside systemd's control.
-            # Do not claim its microphone is off without a control acknowledgment.
-            raise RuntimeError('Stopped the systemd service; could not verify another daemon.')
-    else:
-        try:
-            request('status')
-        except (OSError, ValueError, RuntimeError):
-            subprocess.run(['systemctl', '--user', 'start', 'openclaw-voice.service'], check=True, timeout=25)
-        for attempt in range(40):
-            try:
-                status = request('status')
-                if mode == 'status' or status['connected']:
-                    break
-            except (OSError, ValueError, RuntimeError):
-                pass
-            time.sleep(0.2)
-        else:
-            raise RuntimeError('Gateway unavailable.')
-        result = status if mode == 'status' else request(mode)
-    print(json.dumps(result))
-except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
-    if mode == 'toggle':
-        # A timed-out start may have reached the daemon. Cancel it rather than
-        # reporting failure while leaving a microphone running.
-        subprocess.run(['systemctl', '--user', 'stop', 'openclaw-voice.service'], check=False)
+def main():
     try:
-        subprocess.run(['notify-send', 'OpenClaw Voice', 'Voice unavailable. Check the gateway and audio setup.'], check=False)
-    except OSError:
-        pass
-    raise SystemExit('Voice command failed. Use openclaw-voice stop to end any remaining session.')
+        basename = instance_basename(os.environ)
+    except ValueError as error:
+        raise SystemExit(str(error))
+    unit = basename + '.service'
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
+    if mode == 'open':
+        mode = 'toggle'
+    if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
+        raise SystemExit('Usage: openclaw-voice [toggle|stop|mute|status|preflight]')
+    runtime = os.environ.get('XDG_RUNTIME_DIR')
+    if not runtime:
+        raise SystemExit('Run OpenClaw Voice inside your desktop session.')
+    path = str(Path(runtime) / basename / 'control.sock')
+
+
+    def request(command):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(32)
+            client.connect(path)
+            client.sendall((json.dumps({'command': command}) + '\n').encode())
+            with client.makefile('rb') as response:
+                data = json.loads(response.readline(65537))
+            if not data.get('ok'):
+                raise RuntimeError('Voice command failed.')
+            return data
+
+
+    try:
+        if mode == 'stop':
+            # If control has failed, systemd still owns and can terminate all audio processes.
+            try:
+                result = request(mode)
+            except (OSError, ValueError, RuntimeError):
+                subprocess.run(['systemctl', '--user', 'stop', unit], check=True, timeout=25)
+                # A manually started daemon may be outside systemd's control.
+                # Do not claim its microphone is off without a control acknowledgment.
+                raise RuntimeError('Stopped the systemd service; could not verify another daemon.')
+        else:
+            try:
+                request('status')
+            except (OSError, ValueError, RuntimeError):
+                subprocess.run(['systemctl', '--user', 'start', unit], check=True, timeout=25)
+            for attempt in range(40):
+                try:
+                    status = request('status')
+                    if mode == 'status' or status['connected']:
+                        break
+                except (OSError, ValueError, RuntimeError):
+                    pass
+                time.sleep(0.2)
+            else:
+                raise RuntimeError('Gateway unavailable.')
+            result = status if mode == 'status' else request(mode)
+        print(json.dumps(result))
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        if mode == 'toggle':
+            # A timed-out start may have reached the daemon. Cancel it rather than
+            # reporting failure while leaving a microphone running.
+            subprocess.run(['systemctl', '--user', 'stop', unit], check=False)
+        try:
+            subprocess.run(['notify-send', 'OpenClaw Voice', 'Voice unavailable. Check the gateway and audio setup.'], check=False)
+        except OSError:
+            pass
+        raise SystemExit('Voice command failed. Use this same instance launcher with stop to end any remaining session.')
+
+
+if __name__ == '__main__':
+    main()

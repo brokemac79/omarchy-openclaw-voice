@@ -131,6 +131,10 @@ are stable PulseAudio device names from `pactl list short sources` and
 If upgrading, replace any old browser device IDs with these native names. This integration
 does not discover or control Sonos or Spotify devices.
 
+For separate test instances, SDK binding and safe connection diagnostics, see
+[Separate voice instances](docs/INSTANCES.md). The UI pairing classification
+changes in this version; review enrollment before updating an existing service.
+
 ## Controls and limits
 
 | Control | Action |

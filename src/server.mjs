@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { loadGatewaySdk } from './gateway-sdk.mjs';
+import { createConnectionStatus } from './gateway-connection.mjs';
 import { loadConfig } from './config.mjs';
 import { createState } from './state.mjs';
 import { launchEngine } from './native-engine.mjs';
@@ -11,11 +12,15 @@ import { MODEL } from './policy.mjs';
 const config = await loadConfig();
 const syntheticSilence = process.env.OPENCLAW_VOICE_TEST_SILENCE === '1';
 if (!process.env.XDG_RUNTIME_DIR) throw new Error('Run inside your Linux user session.');
-const runtime = join(process.env.XDG_RUNTIME_DIR, 'openclaw-voice');
+const runtime = join(process.env.XDG_RUNTIME_DIR, config.instance.basename);
+// Fail before acquiring control or connecting if the selected SDK is unavailable.
+const { sdk: { GatewayClient, startGatewayClientWhenEventLoopReady }, binding: gatewaySdk } = await loadGatewaySdk(config.sdk);
+const connection = createConnectionStatus();
 let connected = false, shuttingDown = false, owner, session, native;
 const status = () => ({ connected, requested: owner.requested, active: owner.active,
   muted: owner.muteConfirmed, muteRequested: owner.muted, engineStarting: owner.engineStarting,
-  syntheticSilence, engine: 'gstreamer', model: MODEL, ...native.get() });
+  syntheticSilence, engine: 'gstreamer', model: MODEL, instance: config.instance.name,
+  gatewayConnection: connection.get(), gatewaySdk, ...native.get() });
 // Acquire control before updating the orb, so a second daemon cannot reset it.
 const control = await listenControl(runtime, async command => {
   if (!owner || shuttingDown) throw new Error('Voice is not ready.');
@@ -33,17 +38,16 @@ const control = await listenControl(runtime, async command => {
   }
 });
 native = await createState(runtime);
-const { GatewayClient, startGatewayClientWhenEventLoopReady } = await import(pathToFileURL(config.sdk));
 const client = new GatewayClient({
   url: config.gatewayUrl, deviceAuthScope: config.gatewayUrl,
   ...config.gatewayAuth,
-  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.3.4', mode: 'backend',
+  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.3.4', mode: 'ui',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
-  onHelloOk: () => { connected = true; if (!owner.requested) native.set('idle', 'Microphone off'); },
-  onConnectError: () => { connected = false; if (!shuttingDown) void owner.stop('Gateway connection unavailable.'); },
+  onHelloOk: hello => { connection.accept(hello); connected = true; if (!owner.requested) native.set('idle', 'Microphone off'); },
+  onConnectError: () => { connection.clear(); connected = false; if (!shuttingDown) void owner.stop('Gateway connection unavailable.'); },
   onClose: () => {
-    connected = false;
+    connection.clear(); connected = false;
     if (!shuttingDown) void owner.stop(owner.requested ? 'Gateway disconnected. Microphone off.' : undefined);
   },
   onEvent: event => {

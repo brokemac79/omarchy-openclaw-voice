@@ -47,6 +47,8 @@ for plugin in ('openclaw-voice.orb', 'openclaw-voice.indicator'):
         if file.is_file():
             put(config / 'omarchy/plugins' / plugin / file.name, file.read_bytes())
     put(config / 'omarchy/plugins' / plugin / 'CREDITS.md', (source / 'CREDITS.md').read_bytes())
+put(config / 'omarchy/plugins/openclaw-voice-shared/Instance.js',
+    (source / 'plugin/openclaw-voice-shared/Instance.js').read_bytes())
 
 def quote(value):
     return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
