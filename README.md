@@ -1,13 +1,12 @@
 # Omarchy OpenClaw Voice
 
-Talk to your OpenClaw agent through **OMA's native Omarchy orb and bar icon**.
+Talk to your OpenClaw agent through a **native Omarchy bar control and speech bubbles**.
 Press **Super+Shift+V** or click the **OpenClaw lobster-and-microphone icon** to
 start; repeat to stop. A green dot marks an active call; amber marks an error.
-The orb appears at the bottom of the screen, follows your Omarchy theme and
-responds to incoming and outgoing audio. It does not take keyboard focus or
-block clicks on your work.
-Themed speech bubbles at the top right show your words and OpenClaw's reply
-as they arrive. Long replies show a bounded excerpt; ending a call clears both.
+Voice status and themed speech bubbles stay together at the top right, showing
+your words and OpenClaw's reply as they arrive. The bottom orb is hidden by
+default. The conversation display does not take keyboard focus or block clicks
+on your work. Long replies show a bounded excerpt; ending a call clears both.
 
 The interface is adapted from **[OMA by wombatoperator and contributors](https://github.com/wombatoperator/omarchy-voice)**,
 with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exact
@@ -48,8 +47,10 @@ path. It does not patch the gateway or replace its authentication.
 - GStreamer base/good/bad plugins and libnice, including `webrtcbin`,
   `webrtcdsp`, Opus and PulseAudio elements. `native/audio.py --check` checks them.
 - An OpenClaw installation exposing `dist/plugin-sdk/gateway-runtime.js`, plus
-  its runtime dependencies. Initial integration used OpenClaw client 2026.9.4 and
-  gateway 2026.9.5; the Talk APIs can change between releases.
+  its runtime dependencies. A released minimum version is not yet established.
+  App-launch testing used the `af640b6` candidate associated with OpenClaw PR #153299.
+  Its `2026.9.5` version label does not establish compatibility with stock 2026.9.5.
+  See [tested compatibility](docs/COMPATIBILITY.md) before installation.
 - A local or remote gateway configured in `~/.openclaw/openclaw.json`, gateway
   authentication with the needed operator scopes, and working GPT-Live ChatGPT OAuth.
 
@@ -132,8 +133,8 @@ If upgrading, replace any old browser device IDs with these native names. This i
 does not discover or control Sonos or Spotify devices.
 
 For separate test instances, SDK binding and safe connection diagnostics, see
-[Separate voice instances](docs/INSTANCES.md). The UI pairing classification
-changes in this version; review enrollment before updating an existing service.
+[separate voice instances](docs/INSTANCES.md). The updated client uses ordinary
+UI pairing. Review enrollment before upgrading an existing service.
 
 ## Controls and limits
 
@@ -172,13 +173,16 @@ For problems, first run `openclaw-voice status`, then check the user service sta
 and gateway Talk diagnostics privately. Do not post raw diagnostics containing
 tokens, transcripts or private hostnames.
 
-To disable: run `openclaw-voice stop`, stop `openclaw-voice.service`, disable `openclaw-voice.orb` and
-`openclaw-voice.indicator` with `omarchy plugin disable`, and remove the OpenClaw Voice `require`
-line from your Hyprland config. The backup manifest records each overwritten
-file; restore individual files after checking for subsequent edits. Do not
-restore an old full shell config over newer customizations.
+For removal or rollback, follow [the removal procedure](docs/REMOVAL.md).
+The backup manifest records overwritten files and their original modes.
+Do not restore an old full shell configuration over later customizations.
 
 ## Development and licence
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and
 [CREDITS.md](CREDITS.md). MIT, with upstream notices retained in [LICENSE-OMA](LICENSE-OMA).
+
+The interface uses native Omarchy bar-widget and panel plugins with a local
+voice service. The current installer manages both plugins and the service.
+This repository is not yet packaged for a single marketplace installation command.
+See [release preparation](docs/RELEASING.md) for the remaining sharing requirements.

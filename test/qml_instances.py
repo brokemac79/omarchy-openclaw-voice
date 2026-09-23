@@ -48,6 +48,17 @@ ShellRoot {
     if (a.label !== "Fixture A" || b.label !== "Fixture B" || button.label !== "Fixture A") throw Error("State isolation failed");
     if (a.voiceRuntime === b.voiceRuntime || missing.configured || invalid.configured || invalid.voiceRuntime !== "") throw Error("Control isolation failed");
     missing.toggleVoice(); invalid.toggleVoice(); button.toggleVoice();
+    a.status = "listening"; a.updatedAt = Date.now() / 1000; a.nowSeconds = a.updatedAt;
+  } }
+  Timer { interval: 1000; running: true; onTriggered: {
+    if (!a.conversationVisible || a.orbVisible || a.showOrb || a.statusText !== "Listening") throw Error("Hiding the orb must retain the conversation and status");
+    a.showOrb = true;
+    if (!a.orbVisible || !a.conversationVisible) throw Error("Legacy orb opt-in must not replace the conversation");
+    a.status = "error";
+    if (!a.awake || a.conversationVisible || a.statusText !== "Voice unavailable") throw Error("Error status must remain visible without stale conversation");
+    a.updatedAt = 1;
+    if (a.awake || a.orbVisible || a.conversationVisible) throw Error("Stale state must close all voice overlays");
+    console.log("PASS transcript-orb separation, status and stale cleanup");
   } }
   Timer { interval: 1500; running: true; onTriggered: Qt.quit() }
 }
@@ -55,10 +66,12 @@ ShellRoot {
         (root / 'shell.qml').write_text(qml)
         result = subprocess.run(['quickshell', '--path', str(root / 'shell.qml'), '--no-color'],
                                 capture_output=True, text=True, timeout=10)
-        if result.returncode or not receipt.exists() or receipt.read_text() != "['toggle']":
+        output = result.stdout + result.stderr
+        if (result.returncode or not receipt.exists() or receipt.read_text() != "['toggle']"
+                or 'PASS transcript-orb separation, status and stale cleanup' not in output):
             print(result.stdout, result.stderr)
             raise SystemExit('QML instance/control proof failed.')
-        print('PASS: actual QML state isolation, missing/invalid control refusal, and literal wrapper argv.')
+        print('PASS: actual QML state isolation, control refusal/literal argv, transcript-orb separation, status and stale cleanup.')
 finally:
     for runtime in runtime_dirs:
         shutil.rmtree(runtime)

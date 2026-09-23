@@ -10,8 +10,8 @@ import Quickshell.Wayland
 import qs.Commons
 import "../openclaw-voice-shared/Instance.js" as Instance
 
-// A glow at the bottom of the screen while voice control is awake, breathing
-// with whoever is talking to it — either of them.
+// Conversation and status stay together at the top right. The legacy bottom
+// orb is optional and does not control the transcript panel's visibility.
 //
 // Two files, both written by the daemon:
 //   state.json  status + transcript, a few changes a minute
@@ -51,6 +51,7 @@ Item {
   id: root
   // Set per component, never by changing the shared desktop process environment.
   property string voiceInstance: "default"
+  property bool showOrb: false
   readonly property string voiceBasename: Instance.basename(voiceInstance)
   readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
 
@@ -80,6 +81,12 @@ Item {
                               || status === "acting" || status === "confirm"
                               || status === "error"
   readonly property bool awake: active && fresh
+  readonly property bool orbVisible: showOrb && awake
+  readonly property bool conversationVisible: awake && status !== "error"
+  readonly property string statusText: ({
+    listening: "Listening", thinking: "Thinking", acting: "Working",
+    confirm: "Confirmation needed", error: "Voice unavailable"
+  })[status] || label
 
   readonly property color tint: {
     if (status === "confirm" || status === "error") return Color.urgent
@@ -191,7 +198,7 @@ Item {
   }
 
   Timer {
-    running: root.awake
+    running: root.orbVisible
     interval: 60
     repeat: true
     onTriggered: {
@@ -225,22 +232,67 @@ Item {
       anchors { top: parent.top; right: parent.right; topMargin: 52; rightMargin: 18 }
       width: Math.min(380, parent.width - 36)
       spacing: 10
-      visible: root.awake && root.status !== "error"
-      TranscriptBubble {
+      visible: root.awake
+      Rectangle {
         width: parent.width
-        speaker: "You"
-        words: root.userWords
+        implicitHeight: statusContent.implicitHeight + 28
+        radius: 14
+        color: Color.notifications.background
+        border.color: root.status === "error" || root.status === "confirm"
+                      ? root.tint : Color.notifications.border
+        border.width: 1
+        Column {
+          id: statusContent
+          anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
+          spacing: 7
+          Row {
+            spacing: 8
+            Rectangle {
+              anchors.verticalCenter: parent.verticalCenter
+              width: 6; height: 6; radius: 3
+              color: root.tint
+            }
+            Text {
+              text: root.statusText
+              textFormat: Text.PlainText
+              color: Color.notifications.text
+              font.pixelSize: 13
+            }
+          }
+          Text {
+            width: parent.width
+            visible: root.status === "error" && root.label !== ""
+            text: root.label
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            maximumLineCount: 3
+            elide: Text.ElideRight
+            color: Color.notifications.text
+            font.pixelSize: 13
+          }
+        }
       }
-      TranscriptBubble {
+      Column {
         width: parent.width
-        speaker: "OpenClaw"
-        words: root.replyWords
-        replying: root.status === "acting"
+        spacing: 10
+        visible: root.conversationVisible
+        TranscriptBubble {
+          width: parent.width
+          speaker: "You"
+          words: root.userWords
+        }
+        TranscriptBubble {
+          width: parent.width
+          speaker: "OpenClaw"
+          words: root.replyWords
+          replying: root.status === "acting"
+        }
       }
     }
 
     Item {
       id: stage
+      visible: root.orbVisible
       width: root.haloSize
       height: root.haloSize
       anchors.horizontalCenter: parent.horizontalCenter
@@ -252,7 +304,7 @@ Item {
 
       // Idle breathing. Slow and small, so it reads as alive rather than busy.
       SequentialAnimation {
-        running: root.awake
+        running: root.orbVisible
         loops: Animation.Infinite
         NumberAnimation {
           target: stage; property: "scale"
@@ -528,23 +580,6 @@ Item {
         }
       }
 
-      // Connection status stays by the orb; the conversation is at top right.
-      Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.bottom
-        anchors.topMargin: -28
-        width: 380
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        elide: Text.ElideRight
-        maximumLineCount: 2
-        text: root.label
-        textFormat: Text.PlainText
-        visible: root.label !== ""
-        color: Color.foreground
-        opacity: 1.0
-        font.pixelSize: 13
-      }
     }
   }
 }

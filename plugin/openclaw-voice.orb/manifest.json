@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "openclaw-voice.orb",
-  "name": "OpenClaw Voice orb",
+  "name": "OpenClaw Voice conversation",
   "version": "0.3.4",
   "author": "brokemac79; interface by omarchy-voice contributors",
-  "description": "OMA interface for OpenClaw GPT-Live voice. Click the bar icon to start or stop.",
+  "description": "Top-right status and speech bubbles for OpenClaw Voice. Click the bar icon to start or stop.",
   "kinds": [
     "panel"
   ],
