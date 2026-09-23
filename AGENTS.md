@@ -5,8 +5,10 @@ during development; public release requires an explicit owner decision.
 Maintain a clean, publication-ready history using synthetic fixtures and a
 GitHub noreply author/committer identity. Preserve all upstream notices.
 
-Never add private runtime data, account configuration, audio, screenshots,
-transcripts or machine-specific endpoints to tracked files. Stage explicit
+Never add private runtime data, account configuration, audio, private desktop
+captures, real transcripts or machine-specific endpoints to tracked files.
+Owner-approved documentation screenshots must use synthetic captions and exclude
+private desktop content. Inspect every image before staging. Stage explicit
 paths and run tests, whitespace and publication checks before committing or
 pushing. Do not bypass the hooks. Live voice tests must be explicitly opted in;
 automated tests use synthetic signals and fake output sinks; live provider

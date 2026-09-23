@@ -1,7 +1,7 @@
 # Contributing
 
-Keep changes small and use synthetic fixtures. Do not commit desktop captures,
-audio, transcripts, credentials, private endpoints or personal configuration.
+Keep changes small and use synthetic fixtures. Do not commit private desktop
+captures, audio, real transcripts, credentials, private endpoints or personal configuration.
 The repository is private for now, but review every commit as a future public
 artifact. Preserve upstream attribution and licence notices.
 
@@ -19,7 +19,9 @@ python3 tools/check_public_files.py --history HEAD
 
 Offline tests must not use real microphones, speakers, accounts or providers.
 Live integration checks require explicit opt-in and synthetic silence. Check
-native QML changes on Omarchy using synthetic state; keep any captures private.
+native QML changes on Omarchy using synthetic state. Documentation screenshots
+need owner approval, synthetic captions and visual review for private content.
+Keep all other captures private.
 Before a public release, review repository history, dependency compatibility,
 documentation and actual microphone/speaker behaviour. Do not bypass scanners.
 

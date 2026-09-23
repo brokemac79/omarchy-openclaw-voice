@@ -13,6 +13,19 @@ with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exa
 source revision and changed files. This is early, independent software. The
 repository is private during development; making it public is a separate decision.
 
+## Screenshots
+
+The top-right status card and both sides of the conversation:
+
+![OpenClaw microphone icon in the Omarchy bar above a boxed Listening status and You and OpenClaw speech bubbles](docs/images/voice-conversation.png)
+
+The lobster-and-microphone bar control, close up:
+
+![OpenClaw lobster icon with a white microphone inside its body](docs/images/voice-bar-icon.png)
+
+These are captures of the actual widgets with sample conversation text and a
+plain background. The microphone stayed off. See [capture details](docs/images/README.md).
+
 ## How it works
 
 The native Quickshell plugins display state from a small local service. During
