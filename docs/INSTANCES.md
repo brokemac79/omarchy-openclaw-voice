@@ -25,8 +25,10 @@ plugin configuration. Environment variables on the daemon do not configure QML.
 The indicator also reads these properties from its supported per-widget settings.
 The indicator uses a Process argument array, including for paths with spaces.
 Missing/invalid named control is shown as unconfigured and cannot launch the
-default widget. Both components import `openclaw-voice-shared/Instance.js` next
-to their plugin directories; include that directory when staging a harness.
+default widget. Both components import root `Instance.js`. The root bar widget passes its
+`voiceInstance` to its owned conversation/status component. Use per-widget
+`voiceInstance`, `voiceControl` and `showOrb` settings under plugin ID
+`community.openclaw-voice`; include the root QML/JS files when staging a harness.
 
 Set `openclawConfig` and `gatewaySdk` explicitly in the selected voice options.
 The former wins over `OPENCLAW_CONFIG_PATH`; changing OpenClaw state/home alone

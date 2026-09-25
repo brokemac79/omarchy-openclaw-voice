@@ -13,7 +13,8 @@ sent to a remote target. The HTTP voice offer uses only its scoped session
 credential, never the gateway token. Unsupported secret references fail closed.
 
 The gateway connection uses existing OpenClaw device authentication and broad
-operator scopes needed by the integration. Treat access to the local user
+operator scopes retained for the existing integration. Their necessity has not
+been established as a least-privilege set; see [the source audit](docs/PERMISSIONS.md). Treat access to the local user
 account, paired device store and gateway as trusted administrative access.
 Unix permissions are not a defence against an attacker who controls that user.
 
@@ -35,3 +36,18 @@ supplements manual review and cannot guarantee that a commit is safe.
 Report security issues privately to the repository owner. Use GitHub private
 vulnerability reporting if enabled. Do not open a public issue with credentials,
 private URLs, recordings or conversation details.
+
+
+Marketplace enable loads QML in the unsandboxed Omarchy process, with the user's
+file/process privileges. It does not run the installer. Companion setup is a
+separate preview/apply operation; it stops an existing default unit and installs
+user files but leaves the unit stopped. Service start connects to the selected
+Gateway and can require normal pairing; only explicit voice invocation opens
+audio. Disable/removal of the QML plugin does not stop that separate companion.
+Stop voice first, and remove the companion separately if it is no longer wanted.
+
+The SDP response accumulator is capped at 131072 UTF-8 bytes before decoding,
+including streamed bodies without Content-Length. The exchange has a 25-second
+deadline; Stop, failure and deadline cancel pending input. Transport/library
+buffers are outside this application-level bound. Shortcuts are opt-in, and
+file recovery checks hashes/modes to avoid replacing later user edits.

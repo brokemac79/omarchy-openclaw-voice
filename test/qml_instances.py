@@ -21,8 +21,9 @@ try:
             if not target.is_dir():
                 raise SystemExit('Installed Omarchy shell modules are required.')
             (root / module).symlink_to(target, target_is_directory=True)
-        for plugin in ('openclaw-voice.orb', 'openclaw-voice.indicator', 'openclaw-voice-shared'):
-            shutil.copytree(source / 'plugin' / plugin, root / 'plugin' / plugin)
+        (root / 'plugin').mkdir()
+        for name in ('VoiceIndicator.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
+            shutil.copyfile(source / name, root / 'plugin' / name)
         for name, label in zip(names, ['Fixture A', 'Fixture B']):
             runtime = Path(os.environ['XDG_RUNTIME_DIR']) / ('openclaw-voice-' + name)
             runtime.mkdir(mode=0o700)
@@ -36,17 +37,17 @@ try:
         control.chmod(0o700)
         qml = '''import QtQuick
 import Quickshell
-import "plugin/openclaw-voice.orb" as Orb
-import "plugin/openclaw-voice.indicator" as Indicator
+import "plugin" as Voice
 ShellRoot {
-  Orb.VoiceOrb { id: a; voiceInstance: FIRST }
-  Orb.VoiceOrb { id: b; voiceInstance: SECOND }
-  Indicator.VoiceIndicator { id: button; voiceInstance: FIRST; voiceControl: CONTROL }
-  Indicator.VoiceIndicator { id: missing; voiceInstance: SECOND }
-  Indicator.VoiceIndicator { id: invalid; voiceInstance: "../bad"; voiceControl: CONTROL }
+  Voice.VoiceOrb { id: a; voiceInstance: FIRST }
+  Voice.VoiceOrb { id: b; voiceInstance: SECOND }
+  Voice.VoiceIndicator { id: button; voiceInstance: FIRST; voiceControl: CONTROL }
+  Voice.VoiceIndicator { id: missing; voiceInstance: SECOND }
+  Voice.VoiceIndicator { id: invalid; voiceInstance: "../bad"; voiceControl: CONTROL }
   Timer { interval: 700; running: true; onTriggered: {
     if (a.label !== "Fixture A" || b.label !== "Fixture B" || button.label !== "Fixture A") throw Error("State isolation failed");
     if (a.voiceRuntime === b.voiceRuntime || missing.configured || invalid.configured || invalid.voiceRuntime !== "") throw Error("Control isolation failed");
+    if (button.conversation.voiceInstance !== button.voiceInstance || button.conversation.voiceRuntime !== a.voiceRuntime) throw Error("Owned conversation selector mismatch");
     missing.toggleVoice(); invalid.toggleVoice(); button.toggleVoice();
     a.status = "listening"; a.updatedAt = Date.now() / 1000; a.nowSeconds = a.updatedAt;
   } }

@@ -1,7 +1,7 @@
 # Omarchy OpenClaw Voice
 
 Talk to your OpenClaw agent through a **native Omarchy bar control and speech bubbles**.
-Press **Super+Shift+V** or click the **OpenClaw lobster-and-microphone icon** to
+Click the **OpenClaw lobster-and-microphone icon** to
 start; repeat to stop. A green dot marks an active call; amber marks an error.
 Voice status and themed speech bubbles stay together at the top right, showing
 your words and OpenClaw's reply as they arrive. The bottom orb is hidden by
@@ -28,7 +28,7 @@ plain background. The microphone stayed off. See [capture details](docs/images/R
 
 ## How it works
 
-The native Quickshell plugins display state from a small local service. During
+The native Quickshell plugin displays state from a small local service. During
 an explicit call, a native **GStreamer** worker handles microphone capture,
 echo cancellation, speaker audio and WebRTC through Omarchy's PipeWire audio
 server. The launcher uses a private Unix socket. No browser or local HTTP server
@@ -106,25 +106,62 @@ the remaining full-conversation check.
 
 ## Install
 
-Read the source and run from your graphical session:
+This is one plugin, `community.openclaw-voice`, plus an explicitly installed
+companion. Adding/enabling the plugin only loads its bar control and visual
+children. It does not install dependencies, start a service, enroll a device or
+open the microphone. Plugins run inside Omarchy's unsandboxed user shell.
+
+After publication and owner approval, the normal plugin path will be:
 
 ```sh
-git config core.hooksPath .githooks
-# If needed, install audio dependencies through Omarchy:
-omarchy pkg add python-gobject gst-plugins-base gst-plugins-good gst-plugins-bad libnice
-python3 install.py
-# If Node is outside PATH: python3 install.py --node /path/to/node
-openclaw-voice preflight
+omarchy plugin add https://github.com/brokemac79/omarchy-openclaw-voice
+omarchy plugin enable community.openclaw-voice
 ```
 
-The installer backs up overwritten user files under
-`~/.local/state/openclaw-voice/backups/`, installs the two native plugins and adds
-the shortcut. **Super+Shift+V is replaced**; review any existing binding first.
-Symlink destinations are rejected before any installation changes; resolve them
-to ordinary user files first. XDG directories outside the home directory are
-supported, and the backup manifest records original paths and modes. Packaged
-Omarchy files are never edited. The bridge starts idle; no microphone
-is opened by installation and the service is not enabled at login.
+The repository is currently private. These commands require repository access;
+there is no public marketplace listing yet. A marketplace verification applies
+to an exact commit; the ordinary add/update commands follow repository HEAD.
+Review the chosen commit before setup. The root manifest includes the complete
+UI; no sibling plugin folders are needed.
+
+Install the companion separately from that same reviewed checkout, inside your
+Linux graphical session. First install missing dependencies through Omarchy,
+using `omarchy pkg add python-gobject gst-plugins-base gst-plugins-good
+gst-plugins-bad libnice`. The Python script never installs packages.
+
+```sh
+cd "$HOME/.config/omarchy/plugins/community.openclaw-voice"
+python3 install.py                       # preview every planned file change
+python3 install.py --apply               # install companion, leave it stopped
+# If Node is outside PATH, add --node /path/to/node to both commands.
+```
+
+Configure OpenClaw and the voice options below before explicitly starting the
+companion with `systemctl --user start openclaw-voice.service`. This connects to
+the configured Gateway and may require ordinary device approval. Check
+`openclaw-voice status` and `openclaw-voice preflight`; neither starts capture.
+Clicking the bar icon or invoking the app launcher explicitly starts a call.
+The service is not enabled at login. Installing/upgrading stops an existing
+default companion and leaves it stopped; no automatic reconnect or enrollment
+happens during setup.
+
+**Shortcut replacement is optional.** To replace an existing Super+Shift+V
+binding, review `python3 install.py --replace-shortcut`, then repeat with
+`--apply`. Reload Hyprland manually with `hyprctl reload` after reviewing the
+installed include. Without this flag, the installer leaves Hyprland unchanged,
+including a shortcut opted into during an earlier installation.
+
+Backups and an ownership receipt live under
+`$XDG_STATE_HOME/openclaw-voice/` (default `~/.local/state/openclaw-voice/`).
+Existing files from legacy setup or later user edits cause a refusal. Review a
+preview with `--replace-existing` before consenting to replace them; originals
+are retained for removal. Symlink destinations are rejected before changes.
+XDG directories outside HOME are supported. Packaged Omarchy is never edited.
+
+For upgrades, stop voice, review the plugin update, update its checkout through
+Omarchy, then preview/apply the companion installer again. A plugin update alone
+does not update the separately copied service. **v0.3.4 two-plugin installations
+need the explicit migration in [removal and migration](docs/REMOVAL.md).**
 
 Default dependency locations match an OpenClaw Node installation under
 `~/.local/share/openclaw-node/node_modules/`. To override them, create
@@ -153,7 +190,7 @@ UI pairing. Review enrollment before upgrading an existing service.
 
 | Control | Action |
 | --- | --- |
-| Super+Shift+V / bar icon / app launcher | Start or end the conversation |
+| Bar icon / app launcher / opted-in Super+Shift+V | Start or end the conversation |
 | `openclaw-voice stop` | End voice and release microphone/playback |
 | `openclaw-voice mute` | Toggle microphone transmission during a call |
 | `openclaw-voice status` | Show local connection and microphone state |
@@ -195,7 +232,7 @@ Do not restore an old full shell configuration over later customizations.
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and
 [CREDITS.md](CREDITS.md). MIT, with upstream notices retained in [LICENSE-OMA](LICENSE-OMA).
 
-The interface uses native Omarchy bar-widget and panel plugins with a local
-voice service. The current installer manages both plugins and the service.
-This repository is not yet packaged for a single marketplace installation command.
+The root bar widget owns its conversation/status surfaces. The companion is
+installed separately and keeps working when the UI is disabled; stop voice
+before hiding or removing the plugin. Re-enabling the UI does not start audio.
 See [release preparation](docs/RELEASING.md) for the remaining sharing requirements.

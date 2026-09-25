@@ -10,13 +10,13 @@ import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import qs.Ui
-import "../openclaw-voice-shared/Instance.js" as Instance
+import "Instance.js" as Instance
 
 // Reads the state file the daemon writes on every transition, so the bar
 // reflects what the assistant is doing without polling a process.
 BarWidget {
   id: root
-  moduleName: "openclaw-voice.indicator"
+  moduleName: "community.openclaw-voice"
   property string voiceInstance: setting("voiceInstance", "default")
   property string voiceControl: setting("voiceControl", "")
   readonly property string voiceBasename: Instance.basename(voiceInstance)
@@ -25,6 +25,15 @@ BarWidget {
   readonly property bool configured: voiceBasename !== "" && controlPath !== ""
   function toggleVoice() {
     if (configured && !control.running) control.running = true
+  }
+
+  // Owned by this bar entry: disabling it also removes its visual surfaces.
+  property alias conversation: conversationView
+  VoiceOrb {
+    id: conversationView
+    voiceInstance: root.voiceInstance
+    showOrb: root.setting("showOrb", false)
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
   }
 
   Process {

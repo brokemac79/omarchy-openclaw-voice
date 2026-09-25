@@ -9,7 +9,7 @@ import { loadConfig } from '../src/config.mjs';
 
 test('Node and QML share the same closed instance mapping', async () => {
   const qml = vm.createContext({});
-  vm.runInContext(await readFile(new URL('../plugin/openclaw-voice-shared/Instance.js', import.meta.url), 'utf8'), qml);
+  vm.runInContext(await readFile(new URL('../Instance.js', import.meta.url), 'utf8'), qml);
   for (const [name, base] of [[undefined, 'openclaw-voice'], ['default', 'openclaw-voice'],
     ['test-a_1', 'openclaw-voice-test-a_1']]) {
     const env = name === undefined ? {} : { OPENCLAW_VOICE_INSTANCE: name };

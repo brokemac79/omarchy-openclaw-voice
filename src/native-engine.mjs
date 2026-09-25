@@ -2,6 +2,37 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { OFFER_PATH } from './policy.mjs';
 
+// Bound the accumulated UTF-8 SDP bytes, including chunked/unknown-length bodies.
+// Fetch may deliver a larger transport chunk; reject it before copying/decoding.
+export const MAX_SDP_BYTES = 131072;
+export async function readSdpAnswer(response, signal) {
+  if (!response.body) throw new Error('Missing answer.');
+  const reader = response.body.getReader();
+  const bytes = new Uint8Array(MAX_SDP_BYTES);
+  let length = 0, complete = false;
+  const abort = () => {
+    // Cancelling a reader settles its pending read even if the source stalls.
+    void reader.cancel().catch(() => {});
+  };
+  signal.addEventListener('abort', abort, { once: true });
+  try {
+    signal.throwIfAborted();
+    while (true) {
+      const { done, value } = await reader.read();
+      signal.throwIfAborted();
+      if (done) { complete = true; break; }
+      if (value.byteLength > MAX_SDP_BYTES - length) throw new Error('SDP answer exceeds 131072 bytes.');
+      bytes.set(value, length);
+      length += value.byteLength;
+    }
+    return new TextDecoder().decode(bytes.subarray(0, length));
+  } finally {
+    signal.removeEventListener('abort', abort);
+    if (!complete) void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 // Credentials stay in Node; the audio worker only receives SDP and device names.
 export async function launchEngine(config, session, { syntheticSilence = false,
   onFailure, onTelemetry, spawnWorker = spawn, exchange = fetch } = {}) {
@@ -17,6 +48,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
   function fail() {
     if (closed || failed) return;
     failed = true;
+    aborter.abort();
     rejectReady(new Error('Native audio engine unavailable.'));
     onFailure?.('Native audio failed. Check microphone, speakers and connection.');
   }
@@ -28,14 +60,17 @@ export async function launchEngine(config, session, { syntheticSilence = false,
     if (offered || !started || !grant || typeof sdp !== 'string' || sdp.length > 131072 ||
         !sdp.startsWith('v=0') || !sdp.includes('m=audio') || /m=(video|application)/.test(sdp)) throw new Error('Invalid offer.');
     offered = true;
+    const signal = AbortSignal.any([aborter.signal, AbortSignal.timeout(25000)]);
     const response = await exchange(config.gatewayUrl.replace(/^ws(s?):/, 'http$1:') + OFFER_PATH, {
       method: 'POST', redirect: 'error',
-      signal: AbortSignal.any([aborter.signal, AbortSignal.timeout(25000)]),
+      signal,
       headers: { Authorization: `Bearer ${grant.clientSecret}`, 'Content-Type': 'application/sdp' }, body: sdp,
     });
-    if (!response.ok) throw new Error('Offer rejected.');
-    const answer = await response.text();
-    if (answer.length > 131072) throw new Error('Invalid answer.');
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => {});
+      throw new Error('Offer rejected.');
+    }
+    const answer = await readSdpAnswer(response, signal);
     if (!closed && session.grant === grant) send({ command: 'answer', sdp: answer });
   }
   worker.stdout.setEncoding('utf8');

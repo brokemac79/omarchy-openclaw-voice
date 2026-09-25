@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "community.openclaw-voice",
+  "name": "OpenClaw Voice",
+  "version": "0.3.4",
+  "author": "brokemac79; interface by omarchy-voice contributors",
+  "description": "Bar microphone control, voice status and speech bubbles for an explicitly installed OpenClaw Voice companion.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "VoiceIndicator.qml"
+  },
+  "barWidget": {
+    "displayName": "OpenClaw Voice",
+    "category": "Audio",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "voiceInstance": "default",
+      "voiceControl": "",
+      "showOrb": false
+    },
+    "schema": [
+      {
+        "key": "voiceInstance",
+        "type": "string",
+        "label": "Voice instance"
+      },
+      {
+        "key": "voiceControl",
+        "type": "string",
+        "label": "Named instance control wrapper (absolute path)"
+      },
+      {
+        "key": "showOrb",
+        "type": "boolean",
+        "label": "Show legacy audio orb"
+      }
+    ]
+  }
+}
