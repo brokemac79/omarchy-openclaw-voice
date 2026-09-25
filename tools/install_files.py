@@ -45,16 +45,25 @@ def restore_plan(manifest, backup):
         path = Path(record['path'])
         validate_path(path)
         current = path.read_bytes() if path.exists() else None
-        if 'installedSha256' not in record or fingerprint(current) != record['installedSha256']:
+        current_mode = path.stat().st_mode & 0o777 if current is not None else None
+        if 'installedSha256' not in record or 'originalSha256' not in record:
             raise ValueError('Restore conflict; preserve later edits: ' + str(path))
-        if current is not None and path.stat().st_mode & 0o777 != record['installedMode']:
-            raise ValueError('Restore conflict; file mode changed: ' + str(path))
+        content = None
         if record['backup']:
             saved = Path(record['backup'])
             validate_path(saved)
             content = saved.read_bytes()
             if fingerprint(content) != record['originalSha256']:
                 raise ValueError('Backup content changed: ' + str(saved))
+        # A record is journaled before its write/remove. An interrupted apply
+        # may leave this destination unchanged; validate its backup, then skip it.
+        if (fingerprint(current), current_mode) == (record['originalSha256'], record['mode']):
+            continue
+        if fingerprint(current) != record['installedSha256']:
+            raise ValueError('Restore conflict; preserve later edits: ' + str(path))
+        if current_mode != record['installedMode']:
+            raise ValueError('Restore conflict; file mode changed: ' + str(path))
+        if content is not None:
             plan.put(path, content, record['mode'])
         else:
             plan.remove(path)

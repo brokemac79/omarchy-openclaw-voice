@@ -27,7 +27,7 @@ local commit containing this document; record its full SHA during handoff.
 | Surface | Command/environment | Observed result |
 | --- | --- | --- |
 | Linux runtime regression | `npm test`, disposable `node:24-bookworm`, Node 24.20.0, network disabled, source mounted read-only | 53 passed, zero skipped |
-| Companion file behavior | `python3 -m unittest discover -s test -p 'test_*.py'`, same container, Python 3.11.2 | 13 passed, zero skipped |
+| Companion file behavior | `python3 -m unittest discover -s test -p 'test_*.py'`, same container, Python 3.11.2 | 15 passed, zero skipped, including interrupted-apply recovery |
 | SDP synthetic fixtures | Exact UTF-8 byte limit, one-byte/chunked/unending overflow, stalled input/deadline and Stop during exchange | Accepted exact limit, rejected overflow, cancelled/released readers, no answer after Stop |
 | Installer fixtures | Real disposable home/XDG files; mocked systemd/audio dependency probes | Preview no mutation; install/upgrade/remove/restore; displaced bytes/modes restored; later edits and stop failure preserved |
 | Official manifest validator | Pinned Omarchy `bin/omarchy-plugin-validate` under Debian Bash/jq | Exit 0; one root manifest, valid entrypoint, no plugin symlinks |
@@ -42,6 +42,12 @@ approval, security certification or a claim that the installer is sandboxed.
 Raw validation inputs/results are retained locally under ignored
 `docs/private/marketplace-prep/`, never included in publication. The final commit
 is re-analyzed from Git blobs, with its exact identity recorded in that result.
+
+Parent review found that a journaled-but-unwritten destination blocked recovery
+of earlier applied files. The follow-up accepts an exact original bytes/mode
+state (including original absence), validates its backup and skips that record.
+Injected write-failure cases now restore the applied prefix; later content/mode
+edits, symlinks and modified backups still refuse recovery before any writes.
 
 ## Remaining proof and decisions
 
