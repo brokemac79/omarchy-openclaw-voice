@@ -35,6 +35,14 @@ has now passed its QML/native-audio checks and a manual voice/bubble trial. See
 [the recorded scope](COMPATIBILITY.md#v040-upgrade-tested-on-14-october-2026).
 That trial does not replace the complete disposable-desktop procedure below.
 
+Fresh companion installation, real user-systemd start/stop, upgrade, removal,
+newest-first restoration and later-edit refusal have also passed for the exact
+v0.4.0 archive in a disposable Linux VM. See
+[isolated installation and recovery](COMPATIBILITY.md#v040-isolated-installation-and-recovery-tested-on-14-october-2026).
+The Gateway SDK was synthetic; the installer, GStreamer check and systemd calls
+were real. This closes the companion install/removal/recovery gap without
+claiming a fresh Omarchy OS or full graphical plugin-manager lifecycle.
+
 Use a disposable Omarchy graphical session with Lua Hyprland, Quickshell,
 user systemd and GStreamer. Do not use the live Surface/VPS or edit packaged
 Omarchy. Record exact environment and plugin commit identities. Keep physical

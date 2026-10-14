@@ -100,6 +100,8 @@ anything. Custom per-instance harnesses should migrate their QML paths too.
    `omarchy plugin remove`. Keep a reviewed backup. Remove the old shared
    `openclaw-voice-shared/Instance.js` only if no custom/named harness uses it.
 
-No legacy folder/configuration is silently deleted by the new installer. This
-migration procedure needs the real isolated Omarchy check in
-[release preparation](RELEASING.md); fixture tests do not prove it on a desktop.
+No legacy folder/configuration is silently deleted by the new installer. The
+backed-up live upgrade and isolated companion install/removal/restoration checks
+for v0.4.0 are recorded in [compatibility](COMPATIBILITY.md). The complete fresh
+graphical desktop procedure remains separate in [release preparation](RELEASING.md);
+installer fixtures alone do not prove that desktop lifecycle.

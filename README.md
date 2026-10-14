@@ -2,8 +2,9 @@
 
 **v0.4.0 — initial preview release.** The consolidated package has completed an
 upgrade and manual voice/bubble trial on an existing Omarchy desktop against an
-OpenClaw main build. Clean installation and the full desktop lifecycle still
-need checking; see
+OpenClaw main build. Fresh companion installation, removal and restoration have
+also passed in an isolated Linux VM with real user systemd. Full graphical
+desktop lifecycle coverage remains incomplete; see
 [compatibility and limits](docs/COMPATIBILITY.md). Marketplace submission is a
 separate step.
 

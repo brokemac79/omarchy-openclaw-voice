@@ -4,6 +4,40 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
+## v0.4.0 isolated installation and recovery tested on 14 October 2026
+
+The exact attached v0.4.0 archive was exercised in a disposable Linux Crabbox VM,
+`provider=aws`, lease `cbx_55fb69311044`, run `run_e18abb094f01`. Its SHA-256 was
+`7ffb77e2dde4345ede28badc2d067c19b9d5fa176167e9d09ddf3faee3aef161`, matching
+release commit `dc9bc653274c34985520fe5afb3d0030e574e741`. The VM used Node.js
+`24.19.0`, Python `3.14.4`, systemd `259` and installed GStreamer dependencies.
+The installer, launcher, dependency check and user service manager were real.
+No installer subprocess or service-manager call was mocked.
+
+| Exercised entrypoint/scenario | Observed result |
+| --- | --- |
+| Fresh root package placement and native manifest validator | Exactly one root manifest; copying the package created no companion, service or control socket |
+| `python3 install.py`, then `--apply` in a clean companion installation | Preview changed no files; apply passed the real GStreamer check, verified 21 receipt-owned files and left the unit inactive/static |
+| Installed `openclaw-voice status`, `stop`, then `systemctl --user stop openclaw-voice.service` | Actual unit started with capture off; cgroup contained only the daemon; stopping released its control socket |
+| A second `install.py --apply` while that unit was running | Existing daemon stopped before replacement; installed file hashes/modes remained valid |
+| `install.py --remove`, then `--remove --apply` | Preview preserved files; apply removed companion files, receipt and unit, preserving unrelated configuration and the separate plugin source |
+| `install.py --restore MANIFEST --apply`, newest first | Undoing removal reproduced the installed bytes/modes; undoing upgrade and initial install returned the tested file surfaces to baseline, with the service stopped |
+| A later edit to the installed launcher | Upgrade, removal and restore all refused; edited bytes and the real running daemon's PID were preserved |
+| Explicit replacement of a pre-existing launcher and optional shortcut | Unapproved replacement refused; approved installation backed it up; removal restored original bytes/mode and preserved a later unrelated Hyprland edit |
+| `python3 test/native_audio.py` | Generated-audio send/receive, mute, release and control-EOF checks passed with fake sinks; no physical audio devices were exposed |
+
+All nine scenario groups passed. The VM ended with no companion unit or control
+socket; the manually placed plugin source was moved outside discovery and backups
+were retained. Evidence was downloaded and the lease was released.
+
+The only Gateway was a local synthetic SDK fixture. It supplied connection
+metadata and refused provider/agent requests; no real account, enrollment,
+speech provider or permissions decision was exercised. This proves clean
+companion installation and recovery with real user systemd, not a fresh Omarchy
+OS installation or the graphical plugin manager's full lifecycle. Real Omarchy
+QML and the opted-in live voice trial are recorded separately below. The working
+desktop and Gateway were unchanged by this isolated run.
+
 ## v0.4.0 upgrade tested on 14 October 2026
 
 | Component | Observed identity |
@@ -49,8 +83,9 @@ speech-to-action latency measurement or a diagnosed performance defect.
 This proves an upgrade of an existing paired installation and the manual trial
 above. It does not prove fresh Omarchy installation or enrollment, multiple
 monitors, complete disable/re-enable/restart/failure/removal/restoration behavior,
-or the full approval, denial, cancellation and revocation matrix. Backups were
-verified, but restoration was not performed. No released OpenClaw minimum or
+or the full approval, denial, cancellation and revocation matrix. The live
+desktop's backups were verified without restoring them; the separate VM run
+above exercised installation/removal restoration. No released OpenClaw minimum or
 future-main compatibility guarantee is established. Private configuration,
 captions and audio are not published as evidence.
 
@@ -135,8 +170,9 @@ Stop/deadline cancellation, instance selection and companion file installation,
 upgrade, removal and guarded restoration. See [preparation evidence](MARKETPLACE-PREP.md)
 for the final counts, source identities and limits.
 
-The installer tests use real disposable files and mocked systemd/audio-check
-commands. They prove no real service-manager or desktop lifecycle. Prior v0.3.4
+The Python installer unit tests use real disposable files and mocked systemd/audio-check
+commands. Those unit tests alone prove no real service-manager or desktop lifecycle;
+the separate v0.4.0 VM run above exercised real user systemd. Prior v0.3.4
 evidence does not automatically validate this consolidated package. The newer
 v0.4.0 upgrade and QML/native-audio checks above provide bounded desktop evidence;
 the remaining full lifecycle procedure is separate. No physical audio or live
