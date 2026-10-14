@@ -75,4 +75,4 @@ no released OpenClaw minimum or narrower agent-consult grant is established.
 
 Owner/parent review must choose the release version and final compatibility
 target, complete isolated desktop/human proof, and approve public visibility
-and the [submission body](SUBMISSION-DRAFT.md). No maintainer was contacted.
+and the marketplace submission body. No maintainer had been contacted at that point.

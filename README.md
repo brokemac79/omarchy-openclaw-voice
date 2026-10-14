@@ -18,8 +18,7 @@ on your work. Long replies show a bounded excerpt; ending a call clears both.
 
 The interface is adapted from **[OMA by wombatoperator and contributors](https://github.com/wombatoperator/omarchy-voice)**,
 with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exact
-source revision and changed files. This is early, independent software. The
-repository is private during development; making it public is a separate decision.
+source revision and changed files. This is early, independent software.
 
 ## Screenshots
 
@@ -133,15 +132,14 @@ companion. Adding/enabling the plugin only loads its bar control and visual
 children. It does not install dependencies, start a service, enroll a device or
 open the microphone. Plugins run inside Omarchy's unsandboxed user shell.
 
-After publication and owner approval, the normal plugin path will be:
+The plugin can be installed directly from the repository:
 
 ```sh
 omarchy plugin add https://github.com/brokemac79/omarchy-openclaw-voice
 omarchy plugin enable community.openclaw-voice
 ```
 
-The repository is currently private. These commands require repository access;
-there is no public marketplace listing yet. A marketplace verification applies
+Marketplace verification applies
 to an exact commit; the ordinary add/update commands follow repository HEAD.
 Review the chosen commit before setup. The root manifest includes the complete
 UI; no sibling plugin folders are needed.

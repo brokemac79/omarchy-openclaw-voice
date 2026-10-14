@@ -74,8 +74,8 @@ Keep desktop proof distinct from an opted-in human conversation. The later
 upgrade; it does not establish clean installation, the full lifecycle matrix
 or a released OpenClaw minimum.
 Preserve [compatibility](COMPATIBILITY.md)
-and [scope audit](PERMISSIONS.md) limits. Review [the submission draft](SUBMISSION-DRAFT.md),
-fill final commit/version/evidence fields and obtain owner decisions before
+and [scope audit](PERMISSIONS.md) limits. Review the marketplace submission,
+confirm its final commit/version/evidence fields and obtain owner decisions before
 publication. Freeze the candidate during marketplace review; later commits do
 not inherit exact-snapshot verification.
 
