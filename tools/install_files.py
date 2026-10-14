@@ -1,5 +1,6 @@
 """Atomic user-file installation with a complete, location-independent backup map."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -33,6 +34,43 @@ def atomic_write(path, content, mode=0o600):
             os.unlink(temporary)
 
 
+def fingerprint(content):
+    return hashlib.sha256(content).hexdigest() if content is not None else None
+
+
+def restore_plan(manifest, backup):
+    """Preflight the whole recovery; refuse to overwrite edits since installation."""
+    plan = FilePlan(backup)
+    for record in reversed(json.loads(Path(manifest).read_text())):
+        path = Path(record['path'])
+        validate_path(path)
+        current = path.read_bytes() if path.exists() else None
+        current_mode = path.stat().st_mode & 0o777 if current is not None else None
+        if 'installedSha256' not in record or 'originalSha256' not in record:
+            raise ValueError('Restore conflict; preserve later edits: ' + str(path))
+        content = None
+        if record['backup']:
+            saved = Path(record['backup'])
+            validate_path(saved)
+            content = saved.read_bytes()
+            if fingerprint(content) != record['originalSha256']:
+                raise ValueError('Backup content changed: ' + str(saved))
+        # A record is journaled before its write/remove. An interrupted apply
+        # may leave this destination unchanged; validate its backup, then skip it.
+        if (fingerprint(current), current_mode) == (record['originalSha256'], record['mode']):
+            continue
+        if fingerprint(current) != record['installedSha256']:
+            raise ValueError('Restore conflict; preserve later edits: ' + str(path))
+        if current_mode != record['installedMode']:
+            raise ValueError('Restore conflict; file mode changed: ' + str(path))
+        if content is not None:
+            plan.put(path, content, record['mode'])
+        else:
+            plan.remove(path)
+    plan.validate()
+    return plan
+
+
 class FilePlan:
     def __init__(self, backup):
         self.backup = Path(backup)
@@ -62,7 +100,9 @@ class FilePlan:
                 old_mode = path.stat().st_mode & 0o777
                 atomic_write(old, path.read_bytes())
             records.append({'path': str(path), 'backup': str(old) if old else None,
-                            'mode': old_mode, 'operation': 'remove' if content is None else 'write'})
+                            'mode': old_mode, 'operation': 'remove' if content is None else 'write',
+                            'originalSha256': fingerprint(old.read_bytes()) if old else None,
+                            'installedSha256': fingerprint(content), 'installedMode': mode})
             # Record recovery data before changing each destination.
             atomic_write(self.backup / 'manifest.json', json.dumps(records, indent=2).encode())
             if content is None:

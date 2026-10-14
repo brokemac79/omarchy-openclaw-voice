@@ -69,17 +69,27 @@ Earlier candidate evidence does not automatically apply to this build.
 The test used a remote Gateway and a desktop Node. A complete conversation with
 a local Gateway and local OAuth remains unverified. See [local Gateway validation](LOCAL-GATEWAY.md).
 
-## Offline validation for this revision
+## Pinned-main comparison staged on 25 September 2026
 
-Linux validation passed 46 Node tests and 8 Python tests without skips.
-The Python checks include isolated installation, upgrade and restoration from backup manifests.
-That installer check uses temporary directories and mocked desktop commands.
-It does not install a real service or prove service-manager removal.
+Gateway, desktop Node and SDK were staged together at exact commit
+`b770a861bd80a15ec04eee5a4ac7053ddd0079c2`, using the existing v0.3.4 widget.
+The connection was established with microphone off. Human spoken yes/no testing
+is pending; no main voice or app-launch success is claimed. This staging does
+not validate the new one-root package or establish a released minimum.
+The earlier `af640b6` human smoke remains separate evidence.
 
-Both manifests passed the installed Omarchy validator. The actual QML components
-passed synthetic checks for instance isolation, controls, status and stale-state cleanup.
-Native audio checks passed send, receive, packet-loss concealment, mute and worker release
-using generated audio and fake sinks. Automated checks used no physical audio devices.
+## Offline evidence and package limits
+
+The marketplace preparation has Linux offline regression tests for bounded SDP,
+Stop/deadline cancellation, instance selection and companion file installation,
+upgrade, removal and guarded restoration. See [preparation evidence](MARKETPLACE-PREP.md)
+for the final counts, source identities and limits.
+
+The installer tests use real disposable files and mocked systemd/audio-check
+commands. They prove no real service-manager or desktop lifecycle. Prior v0.3.4
+QML/native-audio evidence does not automatically validate this consolidated
+package. The updated QML harness still needs an isolated Omarchy/Quickshell
+session. No physical audio or live provider is used by automated tests.
 
 ## Check an installation
 

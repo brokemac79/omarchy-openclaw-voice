@@ -1,11 +1,14 @@
-# Prepare a public release
+# Release process
 
-The repository remains private during development. This checklist does not
-authorize publication, a release tag or a marketplace submission.
+Version `0.4.0` is the first GitHub preview release. Its tag preserves the
+consolidated source from `main`; it is not a marketplace listing or a stable
+compatibility guarantee. Repository visibility remains a separate owner
+decision. No marketplace request is created by this release.
 
-The product consists of two native Omarchy plugins and a local voice service.
-The current Python installer installs all three parts.
-The audio dependencies and OpenClaw package are installed separately.
+The permanent plugin ID is `community.openclaw-voice`. The root bar package
+owns its conversation/status children. The companion requires explicit setup.
+Package, manifest and client versions are `0.4.0`. Later releases must update
+them together and use a new tag. Do not move a published release tag.
 
 ## Before publication
 
@@ -25,16 +28,45 @@ Keep screenshots, recordings, transcripts and private configuration out of the r
 An isolated installer test with mocked service commands does not prove real service-manager installation or removal.
 Record that limit until a clean Omarchy installation test covers those steps.
 
-## Marketplace packaging remains separate
+## Remaining real Omarchy procedure
 
-The current manifests are inside `plugin/`, with shared code beside both plugin directories.
-The marketplace currently requires a public repository with a valid root manifest.
-Do not advertise `omarchy plugin add` as a complete installer for this layout.
+Use a disposable Omarchy graphical session with Lua Hyprland, Quickshell,
+user systemd and GStreamer. Do not use the live Surface/VPS or edit packaged
+Omarchy. Record exact environment and plugin commit identities. Keep physical
+audio unavailable during these synthetic checks.
 
-Before submission, choose a supported layout that includes shared code and the
-service setup without duplicating them. Validate dependency installation, plugin
-discovery, disable/re-enable, shell restart and removal through that distribution path.
-Keep installation instructions explicit about the local service and OpenClaw requirements.
+- Add/enable the root package without a companion. Verify one plugin, working
+  bar icon, no duplicate surfaces, and no installer/service/audio start.
+- Preview/apply companion setup without a shortcut, then explicitly replace a
+  fixture binding. Verify backups, modes, unrelated settings, no login
+  enablement and no service start.
+- Run `python3 test/qml_instances.py` with synthetic state/fake controls. Check
+  the real bar and owned status/bubbles on each monitor, long captions, stale
+  state and optional orb. Run qmllint with installed Omarchy/Quickshell imports.
+- Disable/re-enable the plugin and restart the shell. Visual children must
+  follow their bar owner; no service/capture may start. The companion remains
+  separate: stop voice before hiding UI.
+- Exercise real user-systemd start/stop/failure with a synthetic local SDK and
+  generated audio/fake sinks. Confirm cgroup worker cleanup. Mocked systemctl
+  calls do not establish this result.
+- Migrate a disposable v0.3.4 install using [the procedure](REMOVAL.md), retaining
+  selectors, placement, settings and backups. Remove old plugins only after
+  checking the new root. Repeat a current-root companion upgrade.
+- Stop voice, remove companion then plugin. Check no dangling UI or worker.
+  Undo removal via its manifest and earlier upgrades newest-first. Make a later
+  owned-file edit and confirm recovery refuses to overwrite it.
 
-References: [Omarchy shell](https://github.com/omacom/omarchy/blob/quattro/shell/README.md)
-and [marketplace publishing](https://plugins.omarchy.org/publish.html).
+Keep desktop proof distinct from an opted-in human conversation. The 14 October
+main-build conversation used the older installed layout; it does not validate
+the new package's clean installation or establish a released OpenClaw minimum.
+Preserve [compatibility](COMPATIBILITY.md)
+and [scope audit](PERMISSIONS.md) limits. Review [the submission draft](SUBMISSION-DRAFT.md),
+fill final commit/version/evidence fields and obtain owner decisions before
+publication. Freeze the candidate during marketplace review; later commits do
+not inherit exact-snapshot verification.
+
+Sources checked at Omarchy `d201fb9564777fe5a8c587b4ef93a48106720f2e` and
+marketplace `6787464a38421722286b6a2cfbbfc5f9c6cc65b1`:
+[shell contract](https://github.com/omacom/omarchy/blob/d201fb9564777fe5a8c587b4ef93a48106720f2e/docs/omarchy-shell.md),
+[submission requirements](https://github.com/omacom/omarchy-plugin-marketplace/blob/6787464a38421722286b6a2cfbbfc5f9c6cc65b1/SUBMISSION.md),
+and [Octopus precedent](https://github.com/omacom/omarchy-plugin-marketplace/issues/7399).

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
 import { createServer } from 'node:http';
-import { launchEngine } from '../src/native-engine.mjs';
+import { launchEngine, readSdpAnswer, MAX_SDP_BYTES } from '../src/native-engine.mjs';
 const tick = () => new Promise(r => setImmediate(r));
 function fixture() {
   const child = new EventEmitter(), commands = [];
@@ -41,8 +41,73 @@ test('late SDP response after stop cannot reach a replacement worker', async () 
     } });
   await engine.start(); f.child.stdout.write(JSON.stringify({ event: 'offer', sdp: 'v=0\r\nm=audio test' }) + '\n');
   await tick(); await engine.close(); assert.equal(signal.aborted, true);
-  finish({ ok: true, text: async () => 'v=0 synthetic answer' }); await tick();
+  finish(new Response('v=0 synthetic answer')); await tick();
   assert.equal(f.commands.filter(c => c.command === 'answer').length, 0);
+});
+
+test('SDP bound accepts exactly 128 KiB of UTF-8 bytes across arbitrary chunks', async () => {
+  const bytes = new TextEncoder().encode('é'.repeat(MAX_SDP_BYTES / 2));
+  let offset = 0;
+  const body = new ReadableStream({ pull(controller) {
+    if (offset === bytes.length) { controller.close(); return; }
+    const end = Math.min(offset + 997, bytes.length);
+    controller.enqueue(bytes.slice(offset, end)); offset = end;
+  } });
+  const answer = await readSdpAnswer(new Response(body), new AbortController().signal);
+  assert.equal(answer, 'é'.repeat(MAX_SDP_BYTES / 2));
+  assert.equal(body.locked, false);
+});
+
+for (const chunkSize of [1, 8192, MAX_SDP_BYTES + 1]) {
+  test(`unending SDP stream is cancelled at overflow (chunk size ${chunkSize})`, async () => {
+    let pulls = 0, cancelled = false;
+    const body = new ReadableStream({
+      pull(controller) { pulls++; controller.enqueue(new Uint8Array(chunkSize)); },
+      cancel() { cancelled = true; },
+    }, { highWaterMark: 0 });
+    await assert.rejects(readSdpAnswer(new Response(body), new AbortController().signal), /131072 bytes/);
+    assert.equal(pulls, Math.floor(MAX_SDP_BYTES / chunkSize) + 1);
+    assert.equal(cancelled, true);
+    assert.equal(body.locked, false);
+  });
+}
+
+test('an SDP body that stops sending bytes obeys cancellation and releases the reader', async () => {
+  let cancelled = false;
+  const body = new ReadableStream({ cancel() { cancelled = true; } });
+  const aborter = new AbortController();
+  const reading = readSdpAnswer(new Response(body), aborter.signal);
+  aborter.abort();
+  await assert.rejects(reading, { name: 'AbortError' });
+  assert.equal(cancelled, true); assert.equal(body.locked, false);
+});
+
+test('stop during streaming exchange cancels the body without delivering an answer or failure', async () => {
+  const f = fixture(); let cancelled = false, failures = 0;
+  const body = new ReadableStream({ start(controller) {
+    controller.enqueue(new TextEncoder().encode('v=0'));
+  }, cancel() { cancelled = true; } });
+  const engine = await launchEngine(f.config, f.session, {
+    spawnWorker: f.spawnWorker, syntheticSilence: true,
+    exchange: async () => new Response(body), onFailure: () => failures++,
+  });
+  await engine.start();
+  f.child.stdout.write(JSON.stringify({ event: 'offer', sdp: 'v=0\r\nm=audio test' }) + '\n');
+  await tick(); await engine.close(); await tick();
+  assert.equal(cancelled, true); assert.equal(body.locked, false);
+  assert.equal(f.commands.filter(c => c.command === 'answer').length, 0);
+  assert.equal(failures, 0);
+});
+
+test('deadline cancels a silent body even when its source ignores the fetch signal', async () => {
+  let cancelled = false;
+  const body = new ReadableStream({ cancel() { cancelled = true; } });
+  // Keep the loop alive because AbortSignal.timeout uses an unreferenced timer.
+  const keepAlive = setInterval(() => {}, 50);
+  try {
+    await assert.rejects(readSdpAnswer(new Response(body), AbortSignal.timeout(15)), { name: 'TimeoutError' });
+    assert.equal(cancelled, true); assert.equal(body.locked, false);
+  } finally { clearInterval(keepAlive); }
 });
 test('unexpected worker exit reports failure once; shutdown does not report another', async () => {
   const f = fixture(); let failed = 0;

@@ -22,7 +22,7 @@ Shortcut / OMA bar -> private Unix socket -> Node / OpenClaw GatewayClient
 ## Why these components
 
 - **OMA / Quickshell:** the existing native, themed, click-through desktop UI.
-  Its MIT code and attribution remain in the distributed plugins.
+  Its MIT code and attribution remain in the distributed plugin.
 - **GStreamer:** a maintained Linux media framework with a native WebRTC stack,
   Opus, capture/playback and WebRTC echo/noise processing. It avoids launching
   and automating a general-purpose browser for every conversation.
@@ -86,3 +86,23 @@ does not prove physical speaker quality or establish the cause of every dropout.
 - [WebRTC audio processing and echo probe](https://gstreamer.freedesktop.org/documentation/webrtcdsp/webrtcdsp.html)
 - [OpenClaw realtime sessions](https://docs.openclaw.ai/nodes/talk/realtime-sessions)
 - [OMA source and licence](https://github.com/wombatoperator/omarchy-voice)
+
+## Package and setup boundary
+
+Exactly one root manifest exposes `VoiceIndicator.qml` as a bar widget. Each bar
+entry owns a `VoiceOrb` visual child on its own screen; that child retains the
+boxed status, speech bubbles and optional legacy orb. Removing the bar entry
+unloads these visuals. The companion has a separate lifecycle: stop voice before
+disabling the UI. Disabling the UI cannot promise that a separately launched
+audio worker is stopped. Re-enable only watches existing state.
+
+`install.py` explicitly previews/applies companion file changes. It never runs
+from QML, calls a package manager, modifies credentials or starts a service.
+The user starts the configured companion separately. App/shortcut/bar invocation
+can then start the service on demand and toggle voice, as before.
+
+The SDP exchange shares a 25-second deadline across headers and body. Its reader
+accumulates at most 131072 UTF-8 bytes and rejects the first overflow chunk before
+copying or decoding it, even without Content-Length. Fetch may itself deliver a
+larger transport chunk; this is an application buffer bound, not a whole-process
+memory limit. Stop/failure/deadline cancels the reader and releases its lock.

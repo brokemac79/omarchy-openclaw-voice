@@ -8,7 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
-import "../openclaw-voice-shared/Instance.js" as Instance
+import "Instance.js" as Instance
 
 // Conversation and status stay together at the top right. The legacy bottom
 // orb is optional and does not control the transcript panel's visibility.
@@ -52,6 +52,7 @@ Item {
   // Set per component, never by changing the shared desktop process environment.
   property string voiceInstance: "default"
   property bool showOrb: false
+  property var screen: null
   readonly property string voiceBasename: Instance.basename(voiceInstance)
   readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
 
@@ -217,6 +218,7 @@ Item {
 
   PanelWindow {
     id: panel
+    screen: root.screen
     visible: root.awake
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"

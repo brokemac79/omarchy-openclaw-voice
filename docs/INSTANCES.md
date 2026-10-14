@@ -25,16 +25,22 @@ plugin configuration. Environment variables on the daemon do not configure QML.
 The indicator also reads these properties from its supported per-widget settings.
 The indicator uses a Process argument array, including for paths with spaces.
 Missing/invalid named control is shown as unconfigured and cannot launch the
-default widget. Both components import `openclaw-voice-shared/Instance.js` next
-to their plugin directories; include that directory when staging a harness.
+default widget. Both components import root `Instance.js`. The root bar widget passes its
+`voiceInstance` to its owned conversation/status component. Use per-widget
+`voiceInstance`, `voiceControl` and `showOrb` settings under plugin ID
+`community.openclaw-voice`; include the root QML/JS files when staging a harness.
 
 ## Returning from a test instance
 
 The bar control and conversation panel must select the same instance. For the
-normal installation, restore the indicator's `voiceInstance` to `default` and
-clear its `voiceControl` override. The installed `openclaw-voice.orb` manifest's
+normal installation, restore the `community.openclaw-voice` bar entry's
+`voiceInstance` to `default` and clear its `voiceControl` override. The root bar
+widget passes this selector to its conversation panel automatically.
+
+For an older two-plugin installation, the `openclaw-voice.orb` manifest's
 `entryPoints.panel` should select the stock `VoiceOrb.qml`, not a test wrapper
-that fixes a different `voiceInstance`.
+that fixes a different instance. See [migration](REMOVAL.md) before replacing
+that installation with the root package.
 
 Check `openclaw-voice status` and `openclaw-voice preflight` before starting a
 call. These checks do not start microphone capture. A healthy normal service

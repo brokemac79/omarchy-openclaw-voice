@@ -9,29 +9,28 @@ Upstream source revision: `8ef9d6094cff87ad88903481de2b6b4e942c4e86`.
 
 | This repository | Upstream source | Changes |
 | --- | --- | --- |
-| `plugin/openclaw-voice.orb/VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, top-right status and conversation bubbles, plain-text captions, independently optional orb and duplex-audio comments |
-| `plugin/openclaw-voice.indicator/VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, custom lobster/microphone icon, status dot, launcher command, stale-state handling; no click-to-confirm approval |
-| Plugin manifests | Corresponding OMA plugin manifests | Names, IDs, author credit, descriptions and version |
+| `VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, top-right status and conversation bubbles, plain-text captions, independently optional orb and duplex-audio comments |
+| `VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, custom lobster/microphone icon, status dot, launcher command, stale-state handling; no click-to-confirm approval |
+| Root `manifest.json` | Corresponding OMA plugin manifests | One bar package owning the conversation UI; names, ID, author credit and settings |
 | `tools/check_public_files.py` | Same path | Unchanged publication guard |
 | `.githooks/pre-commit`, `.githooks/pre-push` | Same paths | Unchanged privacy hooks |
 
 [LICENSE-OMA](LICENSE-OMA) preserves the complete upstream notice:
-Copyright (c) 2026 omarchy-voice contributors. The notice is also distributed
-with each derived plugin. Integration code and modifications are MIT-licensed,
+Copyright (c) 2026 omarchy-voice contributors. The notice is distributed at the plugin root. Integration code and modifications are MIT-licensed,
 Copyright (c) 2026 brokemac79.
 
-`plugin/openclaw-voice.orb/TranscriptBubble.qml` adds a themed, click-through
+`TranscriptBubble.qml` adds a themed, click-through
 conversation display for this integration. It uses the existing Omarchy theme
 and remains visible independently of the optional OMA-derived orb.
 
-The custom bar icon, `plugin/openclaw-voice.indicator/openclaw-voice.svg`, adapts
+The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision
 `692464e6f8e00e6416eeb050fa7916c129ea3ac4` of
 [openclaw/openclaw](https://github.com/openclaw/openclaw). The adaptation uses a
 flat colour, simpler eyes and a microphone inside the body for small bar sizes.
 Copyright (c) 2026 OpenClaw Foundation; modifications Copyright (c) 2026
 brokemac79. The complete upstream MIT notice is distributed with the icon in
-[LICENSE-OPENCLAW](plugin/openclaw-voice.indicator/LICENSE-OPENCLAW).
+[LICENSE-OPENCLAW](LICENSE-OPENCLAW).
 
 [OpenClaw](https://github.com/openclaw/openclaw) provides the gateway, agent
 consultation and voice session controls. GStreamer, its WebRTC audio-processing

@@ -18,3 +18,6 @@ docs/private/
 benchmarks/
 config.json
 .DS_Store
+
+# Existing owner-approved synthetic capture, reused as marketplace preview.
+!preview.png

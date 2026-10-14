@@ -3,10 +3,70 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from tools.install_files import FilePlan
+from unittest.mock import patch
+from tools.install_files import FilePlan, atomic_write, restore_plan
 
 
 class InstallTests(unittest.TestCase):
+    def interrupted_apply(self, root, second_exists):
+        first, second = root / 'first.txt', root / 'second.txt'
+        first.write_bytes(b'original first'); first.chmod(0o640)
+        if second_exists:
+            second.write_bytes(b'original second'); second.chmod(0o640)
+        plan = FilePlan(root / 'backups/install')
+        plan.put(first, b'changed first', 0o600)
+        plan.put(second, b'changed second', 0o600)
+
+        def fail_second(path, content, mode=0o600):
+            if path == second:
+                raise OSError('Synthetic failure before second destination write')
+            atomic_write(path, content, mode)
+
+        with patch('tools.install_files.atomic_write', side_effect=fail_second):
+            with self.assertRaises(OSError):
+                plan.apply()
+        self.assertEqual(first.read_bytes(), b'changed first')
+        self.assertEqual(second.exists(), second_exists)
+        return first, second, plan.backup / 'manifest.json'
+
+    @unittest.skipIf(os.name == 'nt', 'Unix file modes in interrupted installation')
+    def test_interrupted_apply_restores_applied_files_and_skips_original_state(self):
+        for second_exists in (False, True):
+            with self.subTest(second_exists=second_exists), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                first, second, manifest = self.interrupted_apply(root, second_exists)
+                restore = restore_plan(manifest, root / 'backups/restore')
+                self.assertEqual(set(restore.files), {first})
+                restore.apply()
+                self.assertEqual(first.read_bytes(), b'original first')
+                self.assertEqual(first.stat().st_mode & 0o777, 0o640)
+                self.assertEqual(second.exists(), second_exists)
+                if second_exists:
+                    self.assertEqual(second.read_bytes(), b'original second')
+                    self.assertEqual(second.stat().st_mode & 0o777, 0o640)
+
+    @unittest.skipIf(os.name == 'nt', 'Unix symlinks/modes in interrupted installation')
+    def test_interrupted_recovery_still_rejects_edits_symlinks_and_changed_backups(self):
+        for change in ('content', 'mode', 'symlink', 'backup', 'new-file'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                first, second, manifest = self.interrupted_apply(root, change != 'new-file')
+                if change in ('content', 'new-file'):
+                    second.write_bytes(b'later edit')
+                elif change == 'mode':
+                    second.chmod(0o600)
+                elif change == 'symlink':
+                    target = root / 'elsewhere'; target.write_bytes(b'original second')
+                    target.chmod(0o640)
+                    second.unlink(); second.symlink_to(target)
+                else:
+                    saved = Path(json.loads(manifest.read_text())[1]['backup'])
+                    saved.write_bytes(b'modified backup')
+                with self.assertRaises(ValueError):
+                    restore_plan(manifest, root / 'backups/restore')
+                self.assertEqual(first.read_bytes(), b'changed first')
+                self.assertFalse((root / 'backups/restore').exists())
+
     def test_external_xdg_has_recoverable_backups(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)

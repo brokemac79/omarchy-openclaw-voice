@@ -17,3 +17,7 @@ after capture; the running voice service and installed plugins were unchanged.
 The images were captured directly at the selected screen regions, without
 retouching. Both were visually checked for private content. Widget and icon
 attribution remains in [CREDITS.md](../../CREDITS.md).
+
+`preview.png` at the repository root is a byte-identical copy of
+`voice-conversation.png`, reused for the marketplace card. It is not a new
+capture or evidence of the consolidated package running on a desktop.
