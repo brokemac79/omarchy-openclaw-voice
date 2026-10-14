@@ -41,6 +41,19 @@ remain owned by the gateway. Clicking the icon never approves a pending action.
 The app has no fixed agent name. Set `sessionKey` in your private configuration
 to select your own OpenClaw agent and conversation.
 
+### Agent support
+
+This version connects to OpenClaw. It uses OpenClaw's Gateway SDK, Talk session
+API, agent consultation, authentication and ordinary tool approval routing.
+`sessionKey` selects an agent within OpenClaw; it does not connect directly to
+Codex CLI, Claude Code or another agent service.
+
+The Quickshell interface and GStreamer audio components could be reused for
+another backend, with their MIT attribution preserved. That would need an
+adapter for the other backend's session, audio, cancellation and permission
+contracts. No such adapter is included here. Speech currently uses GPT-Live
+through the OpenClaw gateway's ChatGPT OAuth setup.
+
 Speech uses the gateway's existing **ChatGPT OAuth** setup. No API key or paid
 speech fallback is added. Before each call, the bridge checks the gateway's
 visible configuration for an OAuth profile and rejects configured OpenAI API
@@ -60,9 +73,10 @@ path. It does not patch the gateway or replace its authentication.
 - GStreamer base/good/bad plugins and libnice, including `webrtcbin`,
   `webrtcdsp`, Opus and PulseAudio elements. `native/audio.py --check` checks them.
 - An OpenClaw installation exposing `dist/plugin-sdk/gateway-runtime.js`, plus
-  its runtime dependencies. A released minimum version is not yet established.
-  App-launch testing used the `af640b6` candidate associated with OpenClaw PR #153299.
-  Its `2026.9.5` version label does not establish compatibility with stock 2026.9.5.
+  its runtime dependencies and the realtime Talk WebRTC API. The latest manual
+  trial used an OpenClaw main build labelled `2026.10.3`, containing the merged
+  voice/text permission and Talk consultation lifetime fixes. A released minimum
+  version is not yet established; a main-build label is not a stock-release test.
   See [tested compatibility](docs/COMPATIBILITY.md) before installation.
 - A local or remote gateway configured in `~/.openclaw/openclaw.json`, gateway
   authentication with the needed operator scopes, and working GPT-Live ChatGPT OAuth.

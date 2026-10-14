@@ -28,6 +28,27 @@ Missing/invalid named control is shown as unconfigured and cannot launch the
 default widget. Both components import `openclaw-voice-shared/Instance.js` next
 to their plugin directories; include that directory when staging a harness.
 
+## Returning from a test instance
+
+The bar control and conversation panel must select the same instance. For the
+normal installation, restore the indicator's `voiceInstance` to `default` and
+clear its `voiceControl` override. The installed `openclaw-voice.orb` manifest's
+`entryPoints.panel` should select the stock `VoiceOrb.qml`, not a test wrapper
+that fixes a different `voiceInstance`.
+
+Check `openclaw-voice status` and `openclaw-voice preflight` before starting a
+call. These checks do not start microphone capture. A healthy normal service
+does not prove that a bar button still bound to a test launcher can reach it.
+
+On the tested Omarchy shell, plugin reload could restore an older inline bar
+selector after settings had been changed in place. If the saved settings are
+correct but the button still invokes the old test setup, end any active call
+and use the supported `omarchy-restart-shell` command. This reloads the saved
+layout without reinstalling the voice service. The bubbles should appear while
+a call is active and clear on Stop.
+
+## Gateway and authentication
+
 Set `openclawConfig` and `gatewaySdk` explicitly in the selected voice options.
 The former wins over `OPENCLAW_CONFIG_PATH`; changing OpenClaw state/home alone
 does not redirect the default SDK. Status reports the actual imported SDK path

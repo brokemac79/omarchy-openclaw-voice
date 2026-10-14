@@ -4,6 +4,44 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
+## Main build tested on 14 October 2026
+
+| Component | Observed identity |
+| --- | --- |
+| Remote OpenClaw Gateway | Main commit `9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa`, build version `2026.10.3` |
+| Desktop Node and imported Gateway SDK | Released package `2026.9.4`, commit `3a9d69db306cd7f081e06254cb89c4bcc14a7107` |
+| Installed voice service | Retained `0.3.4` installation; audio engine, session owner, transcript handling and QML match repository main at `57e55f89f972d08b45cc99f3b005cffb1ca1fcd8` |
+| Speech and desktop | Native Omarchy bar widget, GStreamer/PipeWire, gateway-controlled WebRTC and agent consultation |
+
+The Gateway contains the merged [voice/text permission fix](https://github.com/openclaw/openclaw/pull/159697)
+and [Talk consultation lifetime fix](https://github.com/openclaw/openclaw/pull/170083).
+The latter prevents a later consultation from inheriting a finished voice-setup
+request's cancelled lifetime.
+
+The operator started the original bar widget and successfully opened a desktop
+application through a spoken request. After correcting a retained test-instance
+panel selection and restarting the Omarchy shell, another manual call succeeded.
+Both user and assistant captions reached the service, the conversation overlay
+was present, and the operator confirmed the widget worked. Manual Stop returned
+it to connected, idle state with microphone capture off and captions cleared.
+See [returning from a test instance](INSTANCES.md#returning-from-a-test-instance).
+
+A separate trial through the Gateway's normal chat and Talk interface completed
+the same desktop command with the same approvals. This is evidence for that
+tested route, not a complete permission matrix for every widget action.
+
+This was an existing installation, not a clean installation of repository main.
+Its configuration loader, connection wrapper and launcher predate main's named
+instance and connection-diagnostic additions. Those newer wrappers were not
+exercised by this live trial; do not replace them with the older installed files
+or describe the trial as proof for an unchanged full checkout. The separate
+marketplace-preparation package was not installed or tested in this trial.
+
+The version label identifies a tested main build, not a verified stock
+`2026.10.3` release or a guarantee for future main commits. Clean-install,
+upgrade/removal and the full approval, denial, cancellation, revocation and
+reconnect matrix remain separate release checks.
+
 ## Candidate tested on 23 September 2026
 
 | Component | Tested identity or requirement |
