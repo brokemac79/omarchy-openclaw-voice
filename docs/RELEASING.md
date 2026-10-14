@@ -30,6 +30,11 @@ Record that limit until a clean Omarchy installation test covers those steps.
 
 ## Remaining real Omarchy procedure
 
+An owner-authorized upgrade of an existing desktop to the exact v0.4.0 release
+has now passed its QML/native-audio checks and a manual voice/bubble trial. See
+[the recorded scope](COMPATIBILITY.md#v040-upgrade-tested-on-14-october-2026).
+That trial does not replace the complete disposable-desktop procedure below.
+
 Use a disposable Omarchy graphical session with Lua Hyprland, Quickshell,
 user systemd and GStreamer. Do not use the live Surface/VPS or edit packaged
 Omarchy. Record exact environment and plugin commit identities. Keep physical
@@ -56,9 +61,10 @@ audio unavailable during these synthetic checks.
   Undo removal via its manifest and earlier upgrades newest-first. Make a later
   owned-file edit and confirm recovery refuses to overwrite it.
 
-Keep desktop proof distinct from an opted-in human conversation. The 14 October
-main-build conversation used the older installed layout; it does not validate
-the new package's clean installation or establish a released OpenClaw minimum.
+Keep desktop proof distinct from an opted-in human conversation. The later
+14 October trial used the exact consolidated v0.4.0 release after a backed-up
+upgrade; it does not establish clean installation, the full lifecycle matrix
+or a released OpenClaw minimum.
 Preserve [compatibility](COMPATIBILITY.md)
 and [scope audit](PERMISSIONS.md) limits. Review [the submission draft](SUBMISSION-DRAFT.md),
 fill final commit/version/evidence fields and obtain owner decisions before

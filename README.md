@@ -1,8 +1,9 @@
 # Omarchy OpenClaw Voice
 
-**v0.4.0 — initial preview release.** The native voice path has been tried with
-an OpenClaw main build. The consolidated marketplace package still needs its
-clean Omarchy installation and desktop lifecycle checks; see
+**v0.4.0 — initial preview release.** The consolidated package has completed an
+upgrade and manual voice/bubble trial on an existing Omarchy desktop against an
+OpenClaw main build. Clean installation and the full desktop lifecycle still
+need checking; see
 [compatibility and limits](docs/COMPATIBILITY.md). Marketplace submission is a
 separate step.
 

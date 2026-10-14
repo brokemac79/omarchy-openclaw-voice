@@ -25,12 +25,14 @@ notices. The preview reuses an owner-approved synthetic v0.3.4 widget capture.
 
 Release: [v0.4.0 preview](https://github.com/brokemac79/omarchy-openclaw-voice/releases/tag/v0.4.0).
 Resolve that tag to its exact commit for the marketplace snapshot; do not use a
-moving main head. Tested Omarchy/Quickshell for the consolidated package:
-PENDING ISOLATED DESKTOP CHECK. Released OpenClaw minimum: NOT ESTABLISHED.
-The older installed layout completed a manual voice/app-launch and transcript
-trial against main `9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa` on 14 October 2026.
-That result does not establish clean-install proof for this package. See
-docs/COMPATIBILITY.md for exact component identities and limits.
+moving main head. The exact v0.4.0 package completed an owner-authorized upgrade
+on an existing Omarchy `4.0.4-1` / Quickshell `0.3.1` desktop on 14 October 2026.
+Native manifest validation, synthetic QML/native-audio checks and a manual
+voice/bubble trial passed against OpenClaw main
+`9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa`. Only the consolidated voice plugin
+remains registered; the old two-plugin layout is backed up and retired.
+Clean-install and full lifecycle proof remain pending. Released OpenClaw minimum:
+NOT ESTABLISHED. See docs/COMPATIBILITY.md for exact component identities and limits.
 
 Manual setup classification requested. Plugin add/enable loads the UI in the
 unsandboxed user shell. It does not run an installer, install dependencies,
@@ -61,9 +63,10 @@ not save audio/transcript history. Gateway/provider retention is separate. Mute
 sends silence while keeping the device open; Stop releases it. Streamed SDP is
 bounded to 131072 accumulated bytes with a shared 25-second exchange deadline.
 
-Local checks and gaps are in docs/MARKETPLACE-PREP.md. BEFORE SUBMISSION: complete
-real isolated install, legacy upgrade, disable/re-enable, restart/failure,
-removal/restoration, QML and opted-in human voice proof at the final commit.
+Local checks and gaps are in docs/COMPATIBILITY.md and docs/MARKETPLACE-PREP.md.
+BEFORE SUBMISSION: complete isolated clean installation and the remaining
+disable/re-enable, restart/failure and removal/restoration matrix. Preserve the
+exact v0.4.0 upgrade, QML and human-trial scope; later code needs affected proof.
 Offline installer fixtures mock desktop commands and are not lifecycle proof.
 Obtain a fresh published exact-snapshot baseline and disclose its capabilities.
 

@@ -4,7 +4,57 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
-## Main build tested on 14 October 2026
+## v0.4.0 upgrade tested on 14 October 2026
+
+| Component | Observed identity |
+| --- | --- |
+| Plugin and companion | Exact `v0.4.0` commit `dc9bc653274c34985520fe5afb3d0030e574e741`, tree `0ce06e46eca8010bb8907ea35e91b414d9817210` |
+| Root plugin | `community.openclaw-voice`; one enabled voice plugin after retiring the legacy indicator and panel |
+| Desktop | Omarchy `4.0.4-1`, Quickshell `0.3.1`, Node.js `26.8.1`, user systemd and native GStreamer/PipeWire audio |
+| Remote OpenClaw Gateway | Main commit `9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa`, build version `2026.10.3` |
+| Desktop Node and imported Gateway SDK | Released package `2026.9.4`, commit `3a9d69db306cd7f081e06254cb89c4bcc14a7107` |
+
+The owner authorized upgrading the existing paired desktop. The exact release
+checkout was installed using Omarchy's manual-plugin procedure. The released
+installer replaced the old companion after backing it up, left the unit stopped,
+and required a separate explicit service start. The installed companion source
+matched the release, all 21 receipt-owned files matched their hashes and modes,
+and the plugin checkout was clean at the release commit. OpenClaw configuration
+and the existing shortcut files retained their bytes.
+
+The native manifest validator accepted the package. `python3 test/qml_instances.py`
+passed with real Quickshell components, synthetic state and fake controls,
+covering instance isolation, literal control arguments, transcript/orb separation
+and stale-state cleanup. `python3 test/native_audio.py` passed generated-audio
+send/receive, packet-loss concealment, mute, release and control-EOF checks without
+opening physical audio devices. The enabled bar icon was visible and no new
+package QML load errors were found.
+
+The release's 53 Node tests and 15 Python installer tests also passed again on
+this Linux desktop with a temporary HOME/XDG environment, synthetic fixtures and
+zero skips. These offline tests did not use the paired desktop configuration.
+
+For the separate opted-in live trial, the operator started voice from the bar
+and confirmed a spoken reply and both the user and assistant bubbles during a
+desktop-action request. A single conversation overlay was observed. Manual Stop
+returned the service to connected, idle state with capture off and captions
+cleared; its systemd cgroup then contained only the daemon, with the call's audio
+worker gone. The two disabled legacy plugin folders were retired through native
+Omarchy removal and retained as verified backups outside plugin discovery.
+
+The operator reported some slowness. One observed connection took about five
+seconds to reach Listening; this is a single startup observation, not a complete
+speech-to-action latency measurement or a diagnosed performance defect.
+
+This proves an upgrade of an existing paired installation and the manual trial
+above. It does not prove fresh Omarchy installation or enrollment, multiple
+monitors, complete disable/re-enable/restart/failure/removal/restoration behavior,
+or the full approval, denial, cancellation and revocation matrix. Backups were
+verified, but restoration was not performed. No released OpenClaw minimum or
+future-main compatibility guarantee is established. Private configuration,
+captions and audio are not published as evidence.
+
+## Earlier main-build trial on 14 October 2026
 
 | Component | Observed identity |
 | --- | --- |
@@ -87,9 +137,10 @@ for the final counts, source identities and limits.
 
 The installer tests use real disposable files and mocked systemd/audio-check
 commands. They prove no real service-manager or desktop lifecycle. Prior v0.3.4
-QML/native-audio evidence does not automatically validate this consolidated
-package. The updated QML harness still needs an isolated Omarchy/Quickshell
-session. No physical audio or live provider is used by automated tests.
+evidence does not automatically validate this consolidated package. The newer
+v0.4.0 upgrade and QML/native-audio checks above provide bounded desktop evidence;
+the remaining full lifecycle procedure is separate. No physical audio or live
+provider is used by automated tests.
 
 ## Check an installation
 
