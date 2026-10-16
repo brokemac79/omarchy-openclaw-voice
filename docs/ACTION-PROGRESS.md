@@ -1,8 +1,10 @@
 # Action observations and the missing execution contract
 
-This is partial progress on [the result-card feature](https://github.com/brokemac79/omarchy-openclaw-voice/issues/4).
-The native Talk connection does not expose a qualified binding from a spoken
-request to an authoritative host execution result. The feature remains open.
+This delivers the owner-approved scope of [the action-observations feature](https://github.com/brokemac79/omarchy-openclaw-voice/issues/4):
+Heard/Outcome unknown cards and retention of final text already received.
+The owner accepted the limits below for closeout. Verified host execution
+progress/results and recovery of undelivered backend results are outside this
+scope. The native Talk connection does not expose the required execution binding.
 
 ## Current behavior
 
@@ -58,7 +60,7 @@ evidence, not a deployed-version or live-provider test.
   A run from the same text session is insufficient evidence of ownership by
   this voice request. Do not attach unrelated chat/agent events to these cards.
 
-## Contract required to finish the feature
+## Contract required for future execution tracking
 
 The Gateway must expose an authenticated, connection-scoped binding between
 voice session, consultation/request and execution attempt. It must provide
