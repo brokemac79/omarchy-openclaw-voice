@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Window
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Ui
 import "Instance.js" as Instance
 
@@ -24,7 +25,12 @@ BarWidget {
   readonly property string controlPath: Instance.controlPath(voiceInstance, voiceControl, Quickshell.env("HOME"))
   readonly property bool configured: voiceBasename !== "" && controlPath !== ""
   function toggleVoice() {
-    if (configured && !control.running) control.running = true
+    runControl("toggle")
+  }
+  function runControl(command) {
+    if (!configured || control.running || !["toggle", "mute", "quiet", "resume-speech", "stop", "dismiss-result"].includes(command)) return
+    control.operation = command
+    control.running = true
   }
 
   // Owned by this bar entry: disabling it also removes its visual surfaces.
@@ -38,7 +44,20 @@ BarWidget {
 
   Process {
     id: control
-    command: [root.controlPath, "toggle"]
+    property string operation: "toggle"
+    command: [root.controlPath, operation]
+  }
+  property var controlsState: ({})
+  property alias voiceControls: controlsView
+  VoiceControls {
+    id: controlsView
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    voiceState: root.controlsState
+    configured: root.configured
+    current: root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt < 20 && root.status !== "stopped"
+    busy: control.running
+    onExecute: command => root.runControl(command)
+    WlrLayershell.namespace: root.voiceBasename + "-controls"
   }
 
   property string status: "stopped"
@@ -69,16 +88,19 @@ BarWidget {
         root.status = parsed.status || "idle"
         root.label = parsed.text || ""
         root.updatedAt = parsed.updated || 0
+        root.controlsState = parsed
       } catch (e) {
         root.status = "error"
         root.label = ""
         root.updatedAt = 0
+        root.controlsState = ({})
       }
     }
     onLoadFailed: {
       root.status = "stopped"
       root.label = ""
       root.updatedAt = 0
+      root.controlsState = ({})
     }
   }
 
@@ -99,7 +121,7 @@ BarWidget {
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
              || root.status === "standby" || root.status === "connecting" || root.status === "stopping"
-    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop"))
+    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop")) + " · Right-click for voice controls"
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
     Accessible.description: button.tooltipText
@@ -132,7 +154,8 @@ BarWidget {
     }
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
-      root.toggleVoice()
+      if (b === Qt.RightButton) controlsView.visible = !controlsView.visible
+      else if (b === Qt.LeftButton) root.toggleVoice()
     }
   }
 }

@@ -37,6 +37,10 @@ const control = await listenControl(runtime, async command => {
       else void owner.start();
       return status();
     case 'stop': await owner.stop(); return status();
+    case 'quiet': owner.quiet(true); return status();
+    case 'resume-speech': owner.quiet(false); return status();
+    case 'cancel-request': return { ...status(), cancellation: owner.cancelRequest() };
+    case 'dismiss-result': owner.dismissResult(); return status();
     case 'standby-once':
     case 'standby-conversation':
       if (!connected || syntheticSilence || config.wake?.enabled !== true) throw new Error('Wake unavailable.');

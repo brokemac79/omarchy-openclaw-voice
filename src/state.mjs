@@ -30,13 +30,19 @@ export async function createState(directory) {
   const timer = setInterval(() => { void flush().catch(() => {}); }, 80);
   return {
     get: () => ({ ...state }),
-    set(status, text, transcript = {}) {
+    set(status, text, transcript = {}, controls = {}) {
       const caption = String(text || '').slice(0, 240);
       const active = ['listening', 'thinking', 'acting', 'confirm'].includes(status);
       const user = active ? String(transcript.user || '').slice(-TRANSCRIPT_LIMIT) : '';
       const assistant = active ? String(transcript.assistant || '').slice(-TRANSCRIPT_LIMIT) : '';
-      if (state.status !== status || state.text !== caption || state.user !== user || state.assistant !== assistant) {
-        state = { status, text: caption, user, assistant }; dirty = true;
+      const next = { status, text: caption, user, assistant,
+        callRequested: controls.callRequested === true,
+        inputMuted: controls.inputMuted === true, inputMuteRequested: controls.inputMuteRequested === true,
+        speechQuiet: controls.speechQuiet === true, speechQuietRequested: controls.speechQuietRequested === true,
+        workStatus: 'unknown', cancelAvailable: false,
+        lastResult: String(controls.lastResult || '').slice(-TRANSCRIPT_LIMIT) };
+      if (JSON.stringify(state) !== JSON.stringify(next)) {
+        state = next; dirty = true;
       }
     },
     levels(input, output) { levels = [level(input), level(output)]; },

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline native media proof: generated tones, local WebRTC peers, fake sinks."""
 import json
+from array import array
 from pathlib import Path
 import subprocess
 import sys
@@ -24,10 +25,13 @@ def prove_media():
         'level name=received interval=80000000 ! fakesink sync=true async=false'
     )
     rtc = peer.get_by_name('rtc')
-    evidence = {'send': False, 'receive': False, 'loss_concealed': False, 'muted': False}
+    evidence = {'send': False, 'receive': False, 'loss_concealed': False,
+                'quiet': False, 'resumed': False, 'muted': False}
     failures = []
     phase = ['audio', 0.0]
     latest_received = [-100.0]
+    latest_output = [0.0]
+    latest_played_peak = [0]
     answer_sent = [False]
     sent_packets = [0]
 
@@ -71,6 +75,7 @@ def prove_media():
             offer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.OFFER, sdp)
             rtc.emit('set-remote-description', offer, Gst.Promise.new_with_change_func(remote_set, None, None))
         elif event == 'levels':
+            latest_output[0] = data['output']
             if data['active'] and data['output'] > 0.02:
                 evidence['receive'] = True
 
@@ -93,10 +98,19 @@ def prove_media():
         if stats and stats.get_value('plc-num-samples') > 0:
             evidence['loss_concealed'] = True
         if phase[0] == 'audio' and evidence['send'] and evidence['receive'] and evidence['loss_concealed']:
+            phase[:] = ['quiet', time.monotonic()]
+            worker.command({'command': 'quiet', 'outputMuted': True})
+        elif phase[0] == 'quiet' and time.monotonic() - phase[1] > 2:
+            if latest_output[0] == 0 and latest_played_peak[0] < 10 and latest_received[0] > -42 and worker.output_muted and not worker.muted:
+                evidence['quiet'] = True
+                phase[:] = ['resume', time.monotonic()]
+                worker.command({'command': 'quiet', 'outputMuted': False})
+        elif phase[0] == 'resume' and time.monotonic() - phase[1] > 1 and latest_output[0] > 0.02 and latest_played_peak[0] > 100:
+            evidence['resumed'] = True
             phase[:] = ['mute', time.monotonic()]
             worker.command({'command': 'mute', 'muted': True})
         elif phase[0] == 'mute' and time.monotonic() - phase[1] > 2:
-            if latest_received[0] < -60 and worker.muted:
+            if latest_received[0] < -60 and worker.muted and latest_output[0] > 0.02 and not worker.output_muted:
                 evidence['muted'] = True
                 loop.quit()
                 return False
@@ -108,6 +122,12 @@ def prove_media():
     bus = peer.get_bus(); bus.add_signal_watch(); bus.connect('message', message)
     peer.set_state(Gst.State.PLAYING)
     worker.start({'muted': False})
+    playback = worker.pipeline.get_by_name('playback')
+    playback.set_property('signal-handoffs', True)
+    def played(_sink, buffer, _pad):
+        pcm = array('h', buffer.extract_dup(0, buffer.get_size()))
+        latest_played_peak[0] = max(abs(value) for value in pcm)
+    playback.connect('handoff', played)
     # Replace synthetic silence with a generated tone only inside this offline test.
     source = worker.pipeline.get_by_name('capture')
     source.set_property('wave', 0); source.set_property('freq', 440); source.set_property('volume', 0.25)
@@ -123,7 +143,7 @@ def prove_media():
     assert not failures, failures
     assert all(evidence.values()), evidence
     assert worker.pipeline.get_state(Gst.SECOND)[1] == Gst.State.NULL
-    print('PASS: native send, receive with packet loss concealment, mute and release; no physical audio devices.')
+    print('PASS: native send, receive/loss concealment, output Quiet/resume, independent input mute and release; no physical audio devices.')
 
 
 def prove_eof():

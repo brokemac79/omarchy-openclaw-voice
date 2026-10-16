@@ -13,7 +13,7 @@ start; repeat to stop. A green dot marks an active call; amber marks an error.
 Voice status and themed speech bubbles stay together at the top right, showing
 your words and OpenClaw's reply as they arrive. The bottom orb is hidden by
 default. The conversation display does not take keyboard focus or block clicks
-on your work. Long replies show a bounded excerpt; ending a call clears both.
+on your work. Long replies show a bounded excerpt; ending a call clears the live bubbles.
 
 The interface is adapted from **[OMA by wombatoperator and contributors](https://github.com/wombatoperator/omarchy-voice)**,
 with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exact
@@ -212,9 +212,18 @@ UI pairing. Review enrollment before upgrading an existing service.
 | Bar icon / app launcher / opted-in Super+Shift+V | Start or end the conversation |
 | `openclaw-voice stop` | End voice and release microphone/playback |
 | `openclaw-voice mute` | Toggle microphone transmission during a call |
+| `openclaw-voice quiet` / `resume-speech` | Silence / resume local speech without changing microphone input or host work |
+| `openclaw-voice end-voice` | End the call; submitted host work may continue |
+| `openclaw-voice cancel-request` | Report unavailable until an exact request cancellation contract exists |
 | `openclaw-voice status` | Show local connection and microphone state |
 | `openclaw-voice preflight` | Check visible gateway authentication and voice readiness |
 | `openclaw-voice standby-conversation` | Explicitly arm an independently configured local wake detector; Talk stays open after activation |
+
+Right-click the bar icon for separate **Mute input**, **Quiet** and **End voice**
+controls. **Cancel request** is visibly unavailable for the current native route.
+The controls show work status as unknown and retain the last received final text
+excerpt after End or audio failure; dismiss it or start a new call to clear it.
+See [interruption controls and the upstream cancellation gap](docs/INTERRUPTIONS.md).
 
 Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection

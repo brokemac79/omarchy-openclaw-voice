@@ -32,6 +32,22 @@ test('stop during grant acquisition never starts the native pipeline', async () 
   const starting = engine.start(); await engine.close(); finish(); await starting;
   assert.equal(f.commands.length, 0);
 });
+
+test('output Quiet survives reservation and never sends input mute, close or cancellation', async () => {
+  const f = fixture(); let finish;
+  f.session.create = () => new Promise(resolve => { finish = resolve; });
+  const engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true });
+  const starting = engine.start(); engine.quiet(true); finish(); await starting;
+  assert.equal(f.commands[0].outputMuted, true);
+  assert.equal(f.commands[0].muted, false);
+  engine.quiet(false); engine.mute(true); engine.quiet(true);
+  assert.deepEqual(f.commands.slice(1), [
+    { command: 'quiet', outputMuted: false }, { command: 'mute', muted: true },
+    { command: 'quiet', outputMuted: true },
+  ]);
+  await engine.close(); engine.quiet(false);
+  assert.equal(f.commands.length, 4);
+});
 test('late SDP response after stop cannot reach a replacement worker', async () => {
   const f = fixture(); let finish, signal;
   const engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true,

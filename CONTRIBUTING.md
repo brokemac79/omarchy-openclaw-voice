@@ -46,3 +46,9 @@ Run `python3 test/qml_wake_states.py` in the Omarchy graphical session for
 Off/Standby/Connecting/Talk/Stopping/Unknown presentation checks with fake
 controls. Runtime/model qualification is separate; see
 [wake activation](docs/WAKE-WORD.md).
+
+For interruption controls, the native audio proof also checks actual generated
+playback samples through Quiet/resume and independent input mute. Run
+`python3 test/qml_controls.py` in the Omarchy graphical session with synthetic
+state and a fake launcher. It opens no physical audio device or live provider;
+see [the contract limits](docs/INTERRUPTIONS.md).
