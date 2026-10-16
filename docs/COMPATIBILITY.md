@@ -4,6 +4,37 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
+## v0.5.0 preview qualification
+
+The consolidated feature source at `1bef651554b53a8420ee31de40332213d62d5db0`
+passed 106 Node tests and 29 Python tests on Linux, without skips, plus actual
+Omarchy renderer checks for destination labels/presets, controls, action cards,
+wake/readiness state, instance isolation and all five cold-start cases. All 71
+production/test source files matched the tested copy. Tests used synthetic
+Gateway/media fixtures and left the normal installation unchanged.
+
+The release commit updates package, manifest and Gateway client versions
+consistently to 0.5.0. Its exact source archive identity, checksum and final
+validation results are recorded in the GitHub release notes. Source contracts
+were inspected at OpenClaw `d6d7435f59ec2c5aba5b7f571815a1def75a404c` and the
+discovery fields were also checked at `9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa`.
+These are source compatibility checks, not a new live Gateway/provider trial.
+
+No released OpenClaw minimum or future-main range is established. Live speech,
+new enrollment, a full fresh graphical plugin lifecycle and the complete
+approval/denial/revocation matrix remain unqualified for this exact tag.
+Previous v0.4.0 lifecycle and human evidence below, and the separately scoped
+wake trial in [WAKE-WORD.md](WAKE-WORD.md), retain their original version limits.
+No physical re-test of the dual wake spelling fix was requested or performed.
+
+Known feature boundaries: exact-request cancellation and authoritative host
+results remain unavailable; only final text already received can be retained.
+One-request return to standby stays disabled. Destination presets provide
+observed existing session context and preserve Gateway/node authority; they do
+not grant permissions or guarantee the execution location of every tool.
+Companion installation and external wake models remain explicit manual setup.
+An older marketplace review does not certify this source snapshot.
+
 ## v0.4.1 startup recovery tested on 16 October 2026
 
 The bar and caption panel read the companion's runtime files. On Omarchy

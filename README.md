@@ -1,10 +1,10 @@
 # Omarchy OpenClaw Voice
 
-**v0.4.1 — startup recovery preview.** The bar and speech bubbles now recover
-when the voice runtime directory appears after shell startup, including after a
-reboot. Synthetic checks on Omarchy reproduce the old failure and verify the
-repair without microphone capture. Earlier voice and installation trials remain
-separate evidence; see [compatibility and limits](docs/COMPATIBILITY.md).
+**v0.5.0 - voice controls and destination presets preview.** This release adds
+opt-in local wake activation, verified startup readiness and recovery, independent
+speech/input controls, honest action observations and explicit agent/target presets.
+Companion setup and optional wake models remain manual. See [the changelog](CHANGELOG.md)
+and [compatibility and limits](docs/COMPATIBILITY.md).
 The marketplace lists this plugin with manual companion setup.
 
 Talk to your OpenClaw agent through a **native Omarchy bar control and speech bubbles**.
@@ -245,8 +245,7 @@ Microphone mute sends silence while keeping the input device open; Stop releases
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.
-The tagged v0.4.1 release has no wake listener. The main branch adds optional
-local wake activation, disabled by default, with support for both "Hey OpenClaw"
+Version 0.5.0 includes optional local wake activation, disabled by default, with support for both "Hey OpenClaw"
 and "Hey Open Claw" through the separately provisioned sherpa-onnx model. Say the
 phrase, wait for Talk readiness, then speak. Stop disarms input; automatic return
 to standby is deferred. See [setup, validation and limits](docs/WAKE-WORD.md).

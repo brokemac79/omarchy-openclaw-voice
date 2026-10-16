@@ -4,8 +4,8 @@ The existing companion keeps its Gateway connection while idle. This change
 preserves that reuse; it does not add a new warm-connection optimization. It adds
 observable startup milestones, a stricter ready gate and actionable failures.
 Existing recovery from absent or recreated runtime files remains in place.
-These additions are on the main branch; they are not included in the tagged
-v0.4.1 release.
+These additions are included in the v0.5.0 preview. Earlier v0.4.1 contains
+runtime-file recovery only.
 
 | Compact feedback | What has actually happened |
 | --- | --- |

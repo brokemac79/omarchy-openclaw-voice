@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.0 - 16 October 2026
+
+- Add opt-in local wake-to-conversation activation with separately provisioned
+  models. The configured OpenClaw phrase accepts both word-boundary spellings;
+  Standby is explicit local microphone capture, disabled by default.
+- Separate input mute, local speech Quiet/resume and End voice. Retain final
+  text already received when playback is quiet or the call ends.
+- Show observed Preparing voice/Connecting stages, strict microphone/transport/
+  Talk readiness and static recovery guidance. Expose bounded, speech-free
+  monotonic diagnostics through a separate local command.
+- Distinguish spoken Responding feedback from Heard/Outcome unknown cards.
+  Provider acknowledgments never claim completed or cancelled host work.
+- Display the selected agent and node/conversation context, with deliberate
+  presets resolved from existing Gateway destinations. Preserve explicit
+  review boundaries, private selection persistence and old-call event isolation.
+- Add contributor templates and the project vision; keep privacy publication
+  checks and OMA/OpenClaw attribution intact.
+
+This is a preview, with manual companion setup and optional model provisioning.
+Verified host execution/completion/cancellation and recovery of backend results
+that never reached the client remain unsupported. Automatic return to wake
+standby after one request remains disabled pending a correlated completion
+contract. See [compatibility](docs/COMPATIBILITY.md), [wake limits](docs/WAKE-WORD.md),
+[interruption controls](docs/INTERRUPTIONS.md), [action observations](docs/ACTION-PROGRESS.md)
+and [destinations](docs/DESTINATIONS.md). No new live voice or full graphical
+plugin-manager qualification is claimed for this tag; exact source identity,
+automated results and archive checksums are recorded in its release notes.
+
 ## 0.4.1 — 16 October 2026
 
 - Recover the bar state and conversation captions when the companion runtime

@@ -1,15 +1,22 @@
 # Release process
 
 Version `0.4.0` was the first GitHub preview release. Version `0.4.1` repairs
-startup state recovery. Tags preserve the tested source from `main`; they are
+startup state recovery. Version `0.5.0` consolidates opt-in wake activation,
+interruption controls, verified readiness, action observations and destination
+presets. Tags preserve the tested source from `main`; they are
 not a stable compatibility guarantee. The public repository is listed in the
 marketplace with manual companion setup. New source snapshots need their own
 marketplace verification.
 
 The permanent plugin ID is `community.openclaw-voice`. The root bar package
 owns its conversation/status children. The companion requires explicit setup.
-Package, manifest and client versions are `0.4.1`. Later releases must update
+Package, manifest and client versions are `0.5.0`. Later releases must update
 them together and use a new tag. Do not move a published release tag.
+
+Version 0.5.0 remains an owner-authorized preview, like earlier tags. Release
+notes must state exact-archive automated results and the missing live/desktop
+qualification; older human trials do not certify a newer tag. The unresolved
+request-completion contract and automatic return-to-standby remain explicit.
 
 ## Before publication
 
