@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -77,11 +77,21 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       assert.ok(!JSON.stringify(state).includes('synthetic-secret'));
       assert.ok(!output.includes('synthetic-secret'));
     }
+    for (const command of ['quiet', 'resume-speech', 'dismiss-result']) {
+      const state = await request(sockets[1], command);
+      assert.equal(state.ok, true); assert.equal(state.requested, false); assert.equal(state.active, false);
+    }
+    const cancellation = await request(sockets[1], 'cancel-request');
+    assert.equal(cancellation.cancellation.outcome, 'unavailable');
+    assert.equal(cancellation.workStatus, 'unknown');
+    await assert.rejects(readFile(detectorReceipt), { code: 'ENOENT' });
     assert.equal((await request(sockets[1], 'standby-once')).ok, false);
     assert.equal((await request(sockets[0], 'standby-conversation')).ok, false);
     assert.equal((await request(sockets[1], 'standby-conversation')).ok, true);
     const standby = await until(sockets[1], state => state.standby);
     assert.equal(standby.status, 'standby'); assert.equal(standby.active, false);
+    assert.equal((await request(sockets[1], 'quiet')).standby, true);
+    assert.equal((await request(sockets[1], 'cancel-request')).standby, true);
     await request(sockets[1], 'mute');
     await until(sockets[1], state => state.status === 'idle');
     assert.equal((await request(sockets[1])).wakeMode, 'off');

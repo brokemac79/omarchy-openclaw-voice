@@ -41,7 +41,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
   const worker = spawnWorker(config.python, args, { stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, PYTHONUNBUFFERED: '1' } });
   let closed = false, failed = false, ready = false, started = false, offered = false;
-  let desiredMute = false, buffer = '', resolveReady, rejectReady, closePromise;
+  let desiredMute = false, desiredQuiet = false, buffer = '', resolveReady, rejectReady, closePromise;
   const aborter = new AbortController();
   const readiness = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
   const exited = new Promise(resolve => worker.once('close', resolve));
@@ -95,14 +95,16 @@ export async function launchEngine(config, session, { syntheticSilence = false,
   worker.stderr.resume();
   worker.on('error', fail); worker.on('exit', fail); worker.stdin.on('error', fail);
   const handle = {
-    async start({ muted = false } = {}) {
+    async start({ muted = false, outputMuted = false } = {}) {
       desiredMute = muted;
+      desiredQuiet = outputMuted;
       await session.create();
       if (closed || failed) return;
       started = true;
-      send({ command: 'start', muted: desiredMute, inputDevice: config.inputDevice, outputDevice: config.outputDevice });
+      send({ command: 'start', muted: desiredMute, outputMuted: desiredQuiet, inputDevice: config.inputDevice, outputDevice: config.outputDevice });
     },
     mute(value) { desiredMute = value; if (started) send({ command: 'mute', muted: value }); },
+    quiet(value) { desiredQuiet = value; if (started) send({ command: 'quiet', outputMuted: value }); },
     close() {
       if (closePromise) return closePromise;
       closed = true; aborter.abort();

@@ -9,11 +9,15 @@ test('runtime state is private, bounds captions, and clears audio and caption on
   const directory = await mkdtemp(join(tmpdir(), 'openclaw-voice-test-'));
   const state = await createState(directory);
   try {
-    state.set('listening', 'Synthetic caption '.repeat(30), { user: 'x'.repeat(4000), assistant: '<b>Plain text</b>' }); state.levels(0.2, 2);
+    state.set('listening', 'Synthetic caption '.repeat(30), { user: 'x'.repeat(4000), assistant: '<b>Plain text</b>' },
+      { lastResult: 'r'.repeat(4000), cancelAvailable: true, workStatus: 'completed', token: 'synthetic-secret' }); state.levels(0.2, 2);
     await new Promise(r => setTimeout(r, 180));
     assert.equal(JSON.parse(await readFile(join(directory, 'state.json'))).text.length, 240);
     assert.equal(state.get().user.length, 1800);
     assert.equal(state.get().assistant, '<b>Plain text</b>');
+    assert.equal(state.get().lastResult.length, 1800);
+    assert.equal(state.get().workStatus, 'unknown'); assert.equal(state.get().cancelAvailable, false);
+    assert.ok(!JSON.stringify(state.get()).includes('synthetic-secret'));
     assert.equal(await readFile(join(directory, 'level'), 'utf8'), '0.2 1');
     if (process.platform !== 'win32') {
       assert.equal((await stat(directory)).mode & 0o777, 0o700);
@@ -22,6 +26,7 @@ test('runtime state is private, bounds captions, and clears audio and caption on
     await state.close();
     assert.equal(JSON.parse(await readFile(join(directory, 'state.json'))).status, 'idle');
     assert.equal(state.get().user, ''); assert.equal(state.get().assistant, '');
+    assert.equal(state.get().lastResult, undefined);
     assert.equal(await readFile(join(directory, 'level'), 'utf8'), '0 0');
   } finally { await state.close(); await rm(directory, { recursive: true, force: true }); }
 });

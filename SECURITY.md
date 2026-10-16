@@ -24,6 +24,13 @@ audio. Captions are rendered as plain text. Current captions and levels are
 volatile runtime state; this app does not save audio or transcript history.
 The gateway and provider have separate data retention policies.
 
+Quiet only mutes local playback; it does not mute input, cancel work or end Talk.
+End voice releases call resources without claiming that host work stopped. The
+last received final text excerpt can remain in private runtime state after End
+or audio failure, until dismissed, the next call or companion shutdown. No
+transcript history is added. Exact request cancellation is unavailable for the
+current native route; see [interruption controls](docs/INTERRUPTIONS.md).
+
 Optional wake support is disabled by default. Explicitly arming Standby opens a
 local detector microphone; Standby is not microphone off. Its bounded frames
 remain local and are not recorded or sent to the Gateway/provider. Detection

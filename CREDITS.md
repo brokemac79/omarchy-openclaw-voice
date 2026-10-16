@@ -10,7 +10,7 @@ Upstream source revision: `8ef9d6094cff87ad88903481de2b6b4e942c4e86`.
 | This repository | Upstream source | Changes |
 | --- | --- | --- |
 | `VoiceOrb.qml` | `plugin/voice.orb/VoiceOrb.qml` | Runtime namespace, stale-state heartbeat, top-right status and conversation bubbles, plain-text captions, independently optional orb and duplex-audio comments |
-| `VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, custom lobster/microphone icon, status dot, launcher command, stale-state handling; no click-to-confirm approval |
+| `VoiceIndicator.qml` | `plugin/voice.indicator/VoiceIndicator.qml` | Application naming, custom lobster/microphone icon, status dot, launcher command, stale-state handling and separate right-click voice controls; no click-to-confirm approval |
 | Root `manifest.json` | Corresponding OMA plugin manifests | One bar package owning the conversation UI; names, ID, author credit and settings |
 | `tools/check_public_files.py` | Same path | Unchanged publication guard |
 | `.githooks/pre-commit`, `.githooks/pre-push` | Same paths | Unchanged privacy hooks |
@@ -22,6 +22,9 @@ Copyright (c) 2026 brokemac79.
 `TranscriptBubble.qml` adds a themed, click-through
 conversation display for this integration. It uses the existing Omarchy theme
 and remains visible independently of the optional OMA-derived orb.
+`VoiceControls.qml` adds a deliberately opened panel for independent input mute,
+speech Quiet and End voice. It uses the Omarchy theme and keeps unsupported
+request cancellation visibly unavailable.
 
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision

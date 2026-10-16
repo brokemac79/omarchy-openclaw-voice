@@ -17,6 +17,8 @@ export class EngineOwner {
     this.wakePending = Promise.resolve(); this.wakeAbort = null;
     this.wakeDetectedAt = null; this.wakeToReadyMs = null;
     this.sessionReady = this.transportActive = false;
+    this.outputMuted = this.outputMuteConfirmed = false;
+    this.lastResult = '';
   }
   releaseDetector() {
     const detector = this.detector; this.detector = null;
@@ -73,6 +75,8 @@ export class EngineOwner {
     this.sessionReady = this.transportActive = false;
     this.releaseDetector(); this.turnEndedAt = null;
     this.requested = true; this.muted = this.muteConfirmed = false;
+    this.outputMuted = this.outputMuteConfirmed = false;
+    this.lastResult = '';
     this.transcript.clear();
     const epoch = ++this.epoch, previous = this.startup;
     this.phase = 'connecting'; this.caption = 'Connecting to OpenClaw — wait for Talk'; this.render();
@@ -91,7 +95,7 @@ export class EngineOwner {
         });
         if (epoch !== this.epoch) { await candidate.close(); return; }
         this.engine = candidate; this.lastSeen = this.startedAt = this.now();
-        await candidate.start({ muted: this.muted });
+        await candidate.start({ muted: this.muted, outputMuted: this.outputMuted });
         if (epoch === this.epoch) this.lastSeen = this.startedAt = this.now();
       } catch {
         if (epoch === this.epoch) await this.stop('Could not start voice. Check OAuth, gateway and audio devices.');
@@ -104,6 +108,7 @@ export class EngineOwner {
     const epoch = ++this.epoch;
     this.wakeMode = 'off'; this.turnEndedAt = null; this.releaseDetector();
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
+    this.outputMuted = this.outputMuteConfirmed = false;
     this.sessionReady = this.transportActive = false;
     this.native.levels(0, 0);
     this.transcript.clear();
@@ -126,14 +131,34 @@ export class EngineOwner {
     if (!this.requested) return;
     if (this.turnEndedAt !== null) return;
     this.muted = !this.muted; this.engine?.mute(this.muted);
+    this.render();
+  }
+  quiet(value = true) {
+    if (!this.requested) return;
+    this.outputMuted = value === true;
+    this.engine?.quiet(this.outputMuted);
+    this.render();
+  }
+  cancelRequest() {
+    // talk.client.steer selects by session, not this call and exact request.
+    // Never substitute whole-session abort, provider-turn completion or Stop.
+    return { outcome: 'unavailable', reason: 'exact_request_control_unavailable' };
+  }
+  dismissResult() { this.lastResult = ''; this.render(); }
+  controls() {
+    return { callRequested: this.requested, inputMuted: this.muteConfirmed,
+      inputMuteRequested: this.muted, speechQuiet: this.outputMuteConfirmed,
+      speechQuietRequested: this.outputMuted, workStatus: 'unknown',
+      cancelAvailable: false, lastResult: this.lastResult };
   }
   telemetry(data) {
     this.lastSeen = this.now();
     this.transportActive = data.active === true;
     this.updateReadiness();
     this.muteConfirmed = data.muted === true;
+    this.outputMuteConfirmed = data.outputMuted === true;
     if (data.output > 0.01) this.lastOutput = this.now();
-    this.native.levels(this.muteConfirmed ? 0 : data.input, data.output);
+    this.native.levels(this.muteConfirmed ? 0 : data.input, this.outputMuteConfirmed ? 0 : data.output);
     this.render();
   }
   talk(data) {
@@ -143,7 +168,8 @@ export class EngineOwner {
       this.turnEndedAt = this.lastOutput = this.now();
       this.muted = true; this.engine?.mute(true);
     }
-    this.transcript.accept(data);
+    const acceptedText = this.transcript.accept(data);
+    if (acceptedText && data.type === 'output.text.done') this.lastResult = this.transcript.get().assistant;
     const phases = { 'transcript.delta': 'listening', 'transcript.done': 'thinking',
       'output.audio.started': 'acting', 'output.audio.done': 'listening',
       'output.text.delta': 'acting', 'output.text.done': 'listening',
@@ -166,7 +192,7 @@ export class EngineOwner {
     const connecting = this.requested && !this.active;
     this.native.set(connecting ? 'connecting' : this.phase,
       (this.muteConfirmed ? 'Microphone muted' : connecting ? 'Connecting to OpenClaw — wait for Talk' : this.caption) + mode,
-      this.transcript.get());
+      this.transcript.get(), this.controls());
   }
   checkHealth() {
     if (!this.requested || !this.engine) return;

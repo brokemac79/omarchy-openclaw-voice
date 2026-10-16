@@ -32,6 +32,7 @@ class AudioWorker:
         self.loop = GLib.MainLoop()
         self.pipeline = self.webrtc = None
         self.offer_sent = self.stopping = self.connected = self.muted = False
+        self.output_muted = False
         self.input_level = self.output_level = 0.0
         self.output_updated = 0.0
         self.negotiating = False
@@ -62,8 +63,9 @@ class AudioWorker:
         if self.pipeline:
             return self.fail('already-started')
         self.muted = command.get('muted') is True
+        self.output_muted = command.get('outputMuted') is True
         source = 'audiotestsrc name=capture is-live=true wave=silence' if self.synthetic else 'pulsesrc name=capture do-timestamp=true'
-        sink = 'fakesink sync=true async=false' if self.synthetic else 'pulsesink name=playback sync=true async=false'
+        sink = 'fakesink name=playback sync=true async=false' if self.synthetic else 'pulsesink name=playback sync=true async=false'
         # The echo probe is created before capture starts, in the same pipeline.
         # PulseAudio elements connect to Omarchy's PipeWire compatibility server.
         description = (
@@ -72,7 +74,7 @@ class AudioWorker:
             'queue name=incoming max-size-time=200000000 max-size-buffers=0 max-size-bytes=0 ! '
             'rtpopusdepay ! opusdec name=decoder plc=true use-inband-fec=true ! audioconvert ! audioresample ! '
             'audio/x-raw,format=S16LE,rate=48000,channels=1 ! '
-            'level name=reply interval=80000000 ! webrtcechoprobe name=echo ! ' + sink + ' '
+            'volume name=replymute ! level name=reply interval=80000000 ! webrtcechoprobe name=echo ! ' + sink + ' '
             + source + ' ! audioconvert ! audioresample ! '
             'audio/x-raw,format=S16LE,rate=48000,channels=1 ! '
             'webrtcdsp probe=echo echo-cancel=true noise-suppression=true gain-control=true ! '
@@ -90,6 +92,7 @@ class AudioWorker:
                         return self.fail('invalid-device')
                     self.pipeline.get_by_name(element).set_property('device', value)
         self.pipeline.get_by_name('micmute').set_property('mute', self.muted)
+        self.pipeline.get_by_name('replymute').set_property('mute', self.output_muted)
         self.webrtc.connect('on-negotiation-needed', self.negotiate)
         self.webrtc.connect('notify::ice-gathering-state', self.gathered)
         self.webrtc.connect('notify::connection-state', self.connection_changed)
@@ -180,7 +183,7 @@ class AudioWorker:
                 if message.src.get_name() == 'microphone':
                     self.input_level = 0.0 if self.muted else value
                 else:
-                    self.output_level = value
+                    self.output_level = 0.0 if self.output_muted else value
                     self.output_updated = time.monotonic()
 
     def heartbeat(self):
@@ -188,7 +191,7 @@ class AudioWorker:
             return False
         if time.monotonic() - self.output_updated > 0.3:
             self.output_level = 0.0
-        self.emit('levels', active=self.connected, muted=self.muted,
+        self.emit('levels', active=self.connected, muted=self.muted, outputMuted=self.output_muted,
                   input=self.input_level, output=self.output_level)
         return True
 
@@ -208,6 +211,12 @@ class AudioWorker:
                 self.pipeline.get_by_name('micmute').set_property('mute', self.muted)
                 if self.muted:
                     self.input_level = 0.0
+                self.heartbeat()
+            elif action == 'quiet' and self.pipeline:
+                self.output_muted = command.get('outputMuted') is True
+                self.pipeline.get_by_name('replymute').set_property('mute', self.output_muted)
+                if self.output_muted:
+                    self.output_level = 0.0
                 self.heartbeat()
             elif action == 'stop':
                 self.stop()

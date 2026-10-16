@@ -14,6 +14,19 @@ LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
 
 
 class InstanceLauncherTests(unittest.TestCase):
+    def test_in_call_controls_never_start_or_stop_a_service_on_failed_delivery(self):
+        module = runpy.run_path(str(LAUNCHER))
+        for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result'):
+            with self.subTest(mode=mode), \
+                    patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': 'test', 'XDG_RUNTIME_DIR': '/tmp/test'}), \
+                    patch.object(sys, 'argv', [str(LAUNCHER), mode]), \
+                    patch('socket.AF_UNIX', 1, create=True), \
+                    patch('socket.socket', side_effect=OSError('synthetic unavailable control')), \
+                    patch('subprocess.run') as run:
+                with self.assertRaises(SystemExit):
+                    module['main']()
+                self.assertFalse(any(call.args[0][0] == 'systemctl' for call in run.call_args_list))
+
     def test_mapping_rejects_invalid_names_before_io(self):
         module = runpy.run_path(str(LAUNCHER))
         resolve = module['instance_basename']
@@ -57,6 +70,32 @@ class InstanceLauncherTests(unittest.TestCase):
 
 @unittest.skipIf(os.name == 'nt', 'Linux launcher and Unix socket')
 class LauncherTests(unittest.TestCase):
+    def test_in_call_commands_and_end_alias_use_only_the_selected_existing_socket(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'openclaw-voice-test').mkdir()
+            commands = []
+            modes = ['quiet', 'resume-speech', 'mute', 'cancel-request', 'dismiss-result', 'end-voice']
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+                server.bind(str(root / 'openclaw-voice-test/control.sock'))
+                server.listen()
+                server.settimeout(8)
+                def reply():
+                    for _ in modes:
+                        with server.accept()[0] as client:
+                            commands.append(json.loads(client.recv(8192))['command'])
+                            client.sendall(b'{"ok":true,"workStatus":"unknown"}\n')
+                worker = threading.Thread(target=reply, daemon=True)
+                worker.start()
+                for mode in modes:
+                    result = subprocess.run([sys.executable, str(LAUNCHER), mode],
+                                            env={**os.environ, 'OPENCLAW_VOICE_INSTANCE': 'test',
+                                                 'XDG_RUNTIME_DIR': str(root), 'PATH': str(root)},
+                                            capture_output=True, text=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                worker.join(timeout=2)
+                self.assertEqual(commands, modes[:-1] + ['stop'])
+
     def test_existing_manual_daemon_does_not_start_a_competing_unit(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
