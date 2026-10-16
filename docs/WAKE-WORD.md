@@ -1,8 +1,14 @@
-# Optional local wake activation (development candidate)
+# Optional local wake activation
 
 Wake support defaults to disabled. Configuring it does not arm a microphone.
 Click-to-talk uses the existing authenticated Talk route and does not select a
 wake mode. Wake detection grants no permission, authentication or approval.
+
+The first implementation provides explicit wake-to-conversation activation.
+Talk remains open until Stop, failure or disconnect. Automatic return after one
+request is deferred to [issue #6](https://github.com/brokemac79/omarchy-openclaw-voice/issues/6)
+and remains disabled. Battery drain has not been qualified. These limits are
+accepted for this implementation; they are not claims of completed qualification.
 
 | State | Input ownership | Where audio goes |
 | --- | --- | --- |
@@ -84,7 +90,7 @@ openWakeWord's unused TFLite dependency was not installed.
 These are generated-signal runtime checks, not measured standby battery cost,
 wake-to-ready latency or wake accuracy. `wakeToReadyMs` in the private status
 response measures detection to both transport and provider readiness using a
-monotonic clock; no real wake-to-ready measurement has been made.
+monotonic clock. Physical measurements from the later Surface trial are recorded below.
 
 The three ONNX assets came from upstream release `v0.5.1`, outside this checkout:
 
@@ -216,6 +222,43 @@ python3 test/sherpa_native.py --model-directory /absolute/path/to/kws-model \
   --piper-model /absolute/path/to/en_US-ljspeech-high.onnx
 ```
 
+### Opted-in Surface trial (16 October 2026)
+
+The owner completed a single consolidated room trial on a Surface Pro 3 and
+accepted the wake-to-conversation implementation. It used candidate `a791e2d`,
+Python 3.14.7, Node.js 26.8.1, GStreamer 1.28.6 and the sherpa-onnx runtime,
+model hashes and threshold documented above. The normal companion installation
+was preserved and restored after the trial. Only aggregate results are included
+here; no audio, captions, account configuration or private endpoints are published.
+
+| Observation | Result |
+| --- | --- |
+| Near/far recognition before the word-boundary fix | 4/10 near; 7/10 far |
+| Negative phrases | No unwanted activation reported |
+| Room-noise standby | No unwanted activation reported during 648.2 seconds of observed standby (about 10.8 minutes) |
+| Off, ordinary Talk/captions/mute, conversation/playback, standby mute, selected-input mute, Stop races and manual Talk from standby | Operator reported pass |
+| Detection to transport and provider readiness | 13 samples; median 2453 ms, range 2147–2663 ms |
+| Steady detector CPU | Mean 14.0% of one core |
+| Detector RSS | 114412–115088 KiB (about 112 MiB) |
+| Simultaneous detector and Talk workers | None observed at 0.5-second polling intervals |
+| Observer overhead | Mean 0.62% of one core |
+| Battery drain | Not measured; AC power remained connected |
+
+The owner reported that recognition might depend on saying “Open Claw” versus
+“OpenClaw”. The tokenizer produces distinct word-boundary paths for those
+spellings; this does not prove that word boundaries caused the observed misses.
+Commit `3884a41` accepts both paths for the same trigger without changing the
+threshold. The actual model and GStreamer worker subsequently detected generated
+“Hey Open Claw” and “Hey OpenClaw” exactly once each, and rejected an unrelated
+phrase, silence and a tone. All five cases completed without stderr diagnostics.
+The Linux regressions passed 73 Node tests and 23 Python tests with no skips.
+The owner requested no repeat physical trial; the earlier recognition counts
+remain unchanged and do not establish post-fix human accuracy.
+
+This short room observation does not establish an hourly false-wake rate,
+battery life or performance across speakers and rooms. The CPU and memory
+numbers are measurements of this model on this device, not performance promises.
+
 [Porcupine](https://picovoice.ai/docs/porcupine/) supports Linux x86-64/custom
 phrases but requires an account AccessKey. It is not selected.
 
@@ -310,7 +353,7 @@ mode. To change modes, Stop and arm again. Standby mute also means Off.
 Click-to-talk from Standby releases the detector and starts ordinary Talk with
 no return mode. The synthetic-silence test daemon refuses standby commands.
 
-## Validation and trial gate
+## Validation and room trials
 
 Automated tests use fake detectors, generated signals and fake sinks:
 
@@ -331,7 +374,7 @@ The candidate passed the actual Omarchy renderer wake-state/instance fixtures
 and all five cold-start cases using synthetic state and fake controls. No
 installed plugin/service was changed and no physical audio was opened.
 
-Before release/deployment, qualify runtime/model versions, hashes, licences,
+For a new runtime/model combination, qualify versions, hashes, licences,
 missing-model failure and generated-signal inference on Linux x86-64. Then use
 an explicitly opted-in room trial in a separate candidate instance, preserving
 the installed release until that trial is authorized:
@@ -341,8 +384,10 @@ the installed release until that trial is authorized:
 2. Measure wake-to-ready latency with monotonic numeric counters, without
    recordings or real captions. Speak only after readiness. Check ordinary
    approval rules still apply.
-3. Try 20 wakes near/far, then an hour of representative TV/room noise and
+3. Try 20 wakes near/far, then representative TV/room noise and
    assistant playback. Include hardware mute, repeated phrases and Stop races.
+   Record the actual observation duration; an hour gives broader coverage than
+   the short trial above.
 4. Once an authoritative completion boundary is available, qualify one-request
    behavior with short/long replies, pauses and host actions.
    It must not treat an acknowledgment as a finished action or truncate the

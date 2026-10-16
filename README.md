@@ -214,13 +214,17 @@ UI pairing. Review enrollment before upgrading an existing service.
 | `openclaw-voice mute` | Toggle microphone transmission during a call |
 | `openclaw-voice status` | Show local connection and microphone state |
 | `openclaw-voice preflight` | Check visible gateway authentication and voice readiness |
+| `openclaw-voice standby-conversation` | Explicitly arm an independently configured local wake detector; Talk stays open after activation |
 
 Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.
-The installed v0.4.1 release has no wake listener. Optional wake activation is
-a development candidate, disabled by default; see [wake activation](docs/WAKE-WORD.md).
+The tagged v0.4.1 release has no wake listener. The main branch adds optional
+local wake activation, disabled by default, with support for both "Hey OpenClaw"
+and "Hey Open Claw" through the separately provisioned sherpa-onnx model. Say the
+phrase, wait for Talk readiness, then speak. Stop disarms input; automatic return
+to standby is deferred. See [setup, validation and limits](docs/WAKE-WORD.md).
 
 OpenClaw requires a fresh confirmation for voice actions it classifies as
 high-impact, including computer/node control such as opening an app. Answer the
