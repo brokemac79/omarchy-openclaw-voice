@@ -27,8 +27,8 @@ native PulseAudio/PipeWire input path at 16 kHz mono S16LE. Its pipeline has no
 WebRTC, playback, encoder, network or recording element. No PCM or captions go
 to Node. The bounded stdout protocol accepts readiness, heartbeat and one wake.
 The child receives local model/device settings and an environment allowlist,
-without OpenClaw credentials. Models are explicit files, with no downloader,
-phrase substitution or fallback provider.
+without OpenClaw credentials. Models are explicit files, with no downloader or
+fallback provider. The selected OpenClaw trigger accepts the documented word-boundary variants below.
 
 The owner waits for detector exit before starting Talk. Pending detector startup
 is cancellable. A failed release blocks replacement input. Stop, errors,
@@ -154,7 +154,11 @@ recipe. No dataset, model or runtime is bundled or downloaded by this product.
 
 The adapter accepts one English phrase of two to five words, tokenizes it
 locally using the supplied SentencePiece model and checks every token against
-the selected token set. The keyword library reads tokenized configuration from
+the selected token set. Selecting either “Hey Open Claw” or “Hey OpenClaw”
+compiles both BPE word-boundary paths as alternatives for the same wake event.
+Both require “Hey”; this does not add unprefixed “OpenClaw” or lower the threshold.
+Other configured phrases are unchanged. Human recognition of either pronunciation
+still depends on the acoustic model and room conditions. The keyword library reads tokenized configuration from
 an anonymous memory file, which is then closed. It does not receive audio files,
 credentials or permission to use a network. Missing assets, incompatible tokens
 and unsupported settings fail closed before opening input. There is no backend

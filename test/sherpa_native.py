@@ -21,6 +21,7 @@ options = {'backend': 'sherpa-onnx', 'phrase': 'Hey Open Claw',
            **{key: str((args.model_directory / name).resolve()) for key, name in names.items()}}
 voice = PiperVoice.load(args.piper_model)
 cases = [('phrase', speech_pcm('Hey Open Claw', 'piper-ljspeech', 175, neural_voice=voice), True),
+         ('joined phrase', speech_pcm('Hey OpenClaw', 'piper-ljspeech', 175, neural_voice=voice), True),
          ('other phrase', speech_pcm('Hey Claude', 'piper-ljspeech', 175, neural_voice=voice), False),
          ('silence', np.zeros(96000, dtype=np.int16), False),
          ('tone', (np.sin(np.arange(96000) * 2 * np.pi * 440 / 16000) * 8000).astype(np.int16), False)]

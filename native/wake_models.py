@@ -17,6 +17,16 @@ def local_file(options, key, suffix):
     return str(path)
 
 
+def sherpa_phrases(phrase):
+    if not isinstance(phrase, str) or not re.fullmatch(r'[A-Za-z]+(?: [A-Za-z]+){1,4}', phrase) or len(phrase) > 64:
+        raise ValueError('Choose an English wake phrase of two to five words')
+    # The BPE model distinguishes the word boundary before CLAW. Accept both
+    # spellings of this one trigger, retaining HEY in each keyword path.
+    if phrase.casefold() in ('hey open claw', 'hey openclaw'):
+        return ('Hey Open Claw', 'Hey OpenClaw')
+    return (phrase,)
+
+
 def load_detector(options):
     backend = options.get('backend', 'openwakeword')
     if backend == 'openwakeword':
@@ -38,10 +48,7 @@ def load_detector(options):
     paths = {key: local_file(options, key, '.onnx') for key in ('encoder', 'decoder', 'joiner')}
     paths['tokens'] = local_file(options, 'tokens', '.txt')
     bpe = local_file(options, 'bpe', '.model')
-    phrase = options.get('phrase')
-    # This adapter targets the English BPE model, with one explicit phrase.
-    if not isinstance(phrase, str) or not re.fullmatch(r'[A-Za-z]+(?: [A-Za-z]+){1,4}', phrase) or len(phrase) > 64:
-        raise ValueError('Choose an English wake phrase of two to five words')
+    phrases = sherpa_phrases(options.get('phrase'))
     threshold = options.get('threshold', 0.25)
     if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 < threshold <= 1:
         raise ValueError('Invalid keyword threshold')
@@ -51,15 +58,21 @@ def load_detector(options):
     import sentencepiece as spm
     import sherpa_onnx
     tokenizer = spm.SentencePieceProcessor(model_file=bpe)
-    pieces = tokenizer.encode(phrase.upper(), out_type=str)
     symbols = {line.rsplit(' ', 1)[0] for line in Path(paths['tokens']).read_text().splitlines()}
-    if not pieces or len(pieces) > 64 or any(piece not in symbols for piece in pieces):
-        raise ValueError('Phrase is incompatible with the selected token set')
+    token_paths = []
+    for phrase in phrases:
+        pieces = tuple(tokenizer.encode(phrase.upper(), out_type=str))
+        if not pieces or len(pieces) > 64 or any(piece not in symbols for piece in pieces):
+            raise ValueError('Phrase is incompatible with the selected token set')
+        if pieces not in token_paths:
+            token_paths.append(pieces)
+    labels = {f'wake{index}' for index in range(len(token_paths))}
     # Only tokenized configuration lives in this anonymous in-memory file.
     # The library loads it during construction; no phrase or audio file remains.
     fd = os.memfd_create('openclaw-wake-keywords', flags=os.MFD_CLOEXEC)
     try:
-        keywords = (' '.join(pieces) + ' @wake\n').encode()
+        keywords = ''.join(' '.join(pieces) + f' @wake{index}\n'
+                           for index, pieces in enumerate(token_paths)).encode()
         if os.write(fd, keywords) != len(keywords):
             raise OSError('Could not configure keyword')
         kws = sherpa_onnx.KeywordSpotter(**paths, keywords_file=f'/proc/self/fd/{fd}',
@@ -75,7 +88,7 @@ def load_detector(options):
             kws.decode_stream(stream)
             result = kws.get_result(stream)
             if result:
-                if result != 'wake':
+                if result not in labels:
                     raise ValueError('Unexpected keyword result')
                 detected = True
                 kws.reset_stream(stream)
