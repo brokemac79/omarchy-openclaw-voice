@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,11 @@ import { fileURLToPath } from 'node:url';
 test('real servers isolate controls and clear hello metadata without starting audio', { skip: process.platform === 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'voice-server-'));
   const children = [];
+  const publishEvent = async (path, event) => {
+    // The fake SDK polls this file. Never expose writeFile's truncated window.
+    await writeFile(path + '.tmp', JSON.stringify(event));
+    await rename(path + '.tmp', path);
+  };
   const request = (path, command = 'status') => new Promise((resolve, reject) => {
     const socket = net.connect(path, () => socket.write(JSON.stringify({ command }) + '\n'));
     let data = '';
@@ -30,12 +35,15 @@ test('real servers isolate controls and clear hello metadata without starting au
     await writeFile(sdk, `import {readFile} from 'node:fs/promises';
       export class GatewayClient {
         constructor(opts) { this.opts=opts; if(opts.mode!=='ui') throw Error('Expected UI pairing'); }
-        async start() { let last=''; this.timer=setInterval(async()=>{
-          const event=await readFile(process.env.FAKE_EVENT,'utf8'); if(event===last)return; last=event;
-          const data=JSON.parse(event);
+        async start() { let last='', reading=false; this.timer=setInterval(async()=>{
+          if(reading)return; reading=true;
+          try {
+          const event=await readFile(process.env.FAKE_EVENT,'utf8'); if(event===last)return;
+          const data=JSON.parse(event); last=event;
           if(data.type==='close')this.opts.onClose();
           else if(data.type==='error')this.opts.onConnectError(Error('synthetic-secret'));
           else this.opts.onHelloOk(data);
+          } finally { reading=false; }
         },20); }
         async stopAndWait(){clearInterval(this.timer);}
         request(){throw Error('No provider or agent calls allowed in this test');}
@@ -61,7 +69,7 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       await writeFile(join(options, 'config.json'), JSON.stringify({ openclawConfig: config, gatewaySdk: sdk,
         python: detector, wake: { enabled: name === 'test' } }));
       const event = join(root, `${name}.json`); events.push(event);
-      await writeFile(event, JSON.stringify({ auth: { method: 'device-token', role: 'operator', deviceToken: 'synthetic-secret' }, server: { connId: name } }));
+      await publishEvent(event, { auth: { method: 'device-token', role: 'operator', deviceToken: 'synthetic-secret' }, server: { connId: name } });
       const child = spawn(process.execPath, [fileURLToPath(new URL('../src/server.mjs', import.meta.url))], {
         env: { PATH: process.env.PATH, HOME: root, XDG_RUNTIME_DIR: root, XDG_CONFIG_HOME: join(root, 'config'),
           OPENCLAW_VOICE_INSTANCE: name, FAKE_EVENT: event }, stdio: 'pipe',
@@ -97,12 +105,12 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
     assert.equal((await request(sockets[1])).wakeMode, 'off');
     for (const type of ['close', 'error']) {
       await request(sockets[1], 'standby-conversation'); await until(sockets[1], state => state.standby);
-      await writeFile(events[1], JSON.stringify({ type }));
+      await publishEvent(events[1], { type });
       const closed = await until(sockets[1], state => !state.connected);
       assert.equal(closed.gatewayConnection, null);
       assert.equal(closed.standby, false); assert.equal(closed.wakeMode, 'off');
       assert.equal((await request(sockets[0])).connected, true);
-      await writeFile(events[1], JSON.stringify({ auth: { method: 'token' }, server: { connId: type } }));
+      await publishEvent(events[1], { auth: { method: 'token' }, server: { connId: type } });
       const next = await until(sockets[1], state => state.connected);
       assert.equal(next.gatewayConnection.authMethod, 'token');
       assert.equal(next.gatewayConnection.connId, type);
