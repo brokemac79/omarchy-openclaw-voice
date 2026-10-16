@@ -39,3 +39,10 @@ socket and symlink cases, so Linux validation is required before release.
 For startup/state recovery, run `python3 test/qml_cold_start.py` in an Omarchy
 graphical session. It uses synthetic idle state and a fake control; it never
 starts a voice session or opens audio devices.
+
+For optional wake activation, also run `python3 test/native_wake.py` on Linux
+with the audio dependencies. It uses generated input and a fake predictor.
+Run `python3 test/qml_wake_states.py` in the Omarchy graphical session for
+Off/Standby/Connecting/Talk/Stopping/Unknown presentation checks with fake
+controls. Runtime/model qualification is separate; see
+[wake activation](docs/WAKE-WORD.md).

@@ -81,12 +81,14 @@ Item {
   readonly property bool active: status === "listening" || status === "thinking"
                               || status === "acting" || status === "confirm"
                               || status === "error"
+                              || status === "standby" || status === "connecting" || status === "stopping"
   readonly property bool awake: active && fresh
   readonly property bool orbVisible: showOrb && awake
-  readonly property bool conversationVisible: awake && status !== "error"
+  readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
   readonly property string statusText: ({
     listening: "Listening", thinking: "Thinking", acting: "Working",
-    confirm: "Confirmation needed", error: "Voice unavailable"
+    confirm: "Confirmation needed", error: "Voice unavailable",
+    standby: "Standby · Local microphone", connecting: "Connecting · Wait for Talk", stopping: "Stopping · Releasing microphone"
   })[status] || label
 
   readonly property color tint: {
@@ -271,7 +273,8 @@ Item {
           }
           Text {
             width: parent.width
-            visible: root.status === "error" && root.label !== ""
+            visible: root.label !== "" && (root.status === "error" || root.status === "standby"
+                     || root.status === "connecting" || root.label.includes("standby") || root.label.includes("open conversation"))
             text: root.label
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap

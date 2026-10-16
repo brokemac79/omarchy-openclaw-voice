@@ -41,3 +41,9 @@ their own licences; this repository does not relicense or bundle them.
 This is an independent integration, without an endorsement from OMA, OpenClaw,
 Omarchy or OpenAI. It is maintained as a separate repository so development can
 remain private until a deliberate public release.
+
+The optional wake adapter calls separately installed
+[openWakeWord](https://github.com/dscripka/openWakeWord) by David Scripka and
+contributors (Apache-2.0) through its public Python API. No upstream code or
+models are bundled. Included upstream pretrained models have separate
+CC BY-NC-SA 4.0 terms; see [the model assessment](docs/WAKE-WORD.md).

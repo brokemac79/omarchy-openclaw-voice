@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 test('real servers isolate controls and clear hello metadata without starting audio', { skip: process.platform === 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'voice-server-'));
   const children = [];
-  const request = path => new Promise((resolve, reject) => {
-    const socket = net.connect(path, () => socket.write('{"command":"status"}\n'));
+  const request = (path, command = 'status') => new Promise((resolve, reject) => {
+    const socket = net.connect(path, () => socket.write(JSON.stringify({ command }) + '\n'));
     let data = '';
     socket.setTimeout(1000, () => socket.destroy(new Error('test timeout')));
     socket.on('data', chunk => { data += chunk; }); socket.on('error', reject);
@@ -42,12 +42,24 @@ test('real servers isolate controls and clear hello metadata without starting au
       }
       export async function startGatewayClientWhenEventLoopReady(client){await client.start();}`);
     const config = join(root, 'gateway.json');
+    const detector = join(root, 'fake-python');
+    const detectorReceipt = join(root, 'detector-starts');
+    await writeFile(detector, `#!/usr/bin/python3
+import json, pathlib, select, sys
+if not sys.argv[1].endswith('/native/wake.py'): raise SystemExit('No Talk worker allowed')
+settings = json.loads(sys.stdin.readline())
+if 'gateway' in json.dumps(settings) or 'synthetic-secret' in json.dumps(settings): raise SystemExit('Unexpected credentials')
+with pathlib.Path(${JSON.stringify(detectorReceipt)}).open('a') as receipt: receipt.write('start\\n')
+print('{"event":"ready"}', flush=True)
+while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat"}', flush=True)
+`, { mode: 0o700 });
     await writeFile(config, JSON.stringify({ gateway: { mode: 'remote', remote: { url: 'ws://127.0.0.1:29789' } } }));
     const sockets = [], events = [];
     for (const name of ['default', 'test']) {
       const base = name === 'default' ? 'openclaw-voice' : 'openclaw-voice-test';
       const options = join(root, 'config', base); await mkdir(options, { recursive: true });
-      await writeFile(join(options, 'config.json'), JSON.stringify({ openclawConfig: config, gatewaySdk: sdk }));
+      await writeFile(join(options, 'config.json'), JSON.stringify({ openclawConfig: config, gatewaySdk: sdk,
+        python: detector, wake: { enabled: name === 'test' } }));
       const event = join(root, `${name}.json`); events.push(event);
       await writeFile(event, JSON.stringify({ auth: { method: 'device-token', role: 'operator', deviceToken: 'synthetic-secret' }, server: { connId: name } }));
       const child = spawn(process.execPath, [fileURLToPath(new URL('../src/server.mjs', import.meta.url))], {
@@ -60,19 +72,31 @@ test('real servers isolate controls and clear hello metadata without starting au
       const state = await until(socket, state => state.connected);
       assert.equal(state.instance, name); assert.equal(state.gatewayConnection.connId, name);
       assert.equal(state.active, false); assert.equal(state.requested, false);
+      assert.equal(state.standby, false); assert.equal(state.wakeMode, 'off');
       assert.equal(state.gatewaySdk.path, sdk);
       assert.ok(!JSON.stringify(state).includes('synthetic-secret'));
       assert.ok(!output.includes('synthetic-secret'));
     }
+    assert.equal((await request(sockets[1], 'standby-once')).ok, false);
+    assert.equal((await request(sockets[0], 'standby-conversation')).ok, false);
+    assert.equal((await request(sockets[1], 'standby-conversation')).ok, true);
+    const standby = await until(sockets[1], state => state.standby);
+    assert.equal(standby.status, 'standby'); assert.equal(standby.active, false);
+    await request(sockets[1], 'mute');
+    await until(sockets[1], state => state.status === 'idle');
+    assert.equal((await request(sockets[1])).wakeMode, 'off');
     for (const type of ['close', 'error']) {
+      await request(sockets[1], 'standby-conversation'); await until(sockets[1], state => state.standby);
       await writeFile(events[1], JSON.stringify({ type }));
       const closed = await until(sockets[1], state => !state.connected);
       assert.equal(closed.gatewayConnection, null);
+      assert.equal(closed.standby, false); assert.equal(closed.wakeMode, 'off');
       assert.equal((await request(sockets[0])).connected, true);
       await writeFile(events[1], JSON.stringify({ auth: { method: 'token' }, server: { connId: type } }));
       const next = await until(sockets[1], state => state.connected);
       assert.equal(next.gatewayConnection.authMethod, 'token');
       assert.equal(next.gatewayConnection.connId, type);
+      assert.equal(next.standby, false); assert.equal(next.wakeMode, 'off');
     }
   } finally {
     await Promise.all(children.map(async child => {

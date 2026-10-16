@@ -69,7 +69,8 @@ Talk deltas are accumulated separately for the user and assistant; final events
 replace the partial utterance. Sequence numbers reject repeated or older text.
 The top-right bubbles render plain text and clear on stop or failure. They are
 part of the orb's click-through overlay and do not enter notification history.
-There is no wake-word listener, recording store or autonomous local approval.
+An optional, explicitly armed local wake listener is described in
+[wake activation](WAKE-WORD.md). There is no recording store or autonomous local approval.
 Speech uses the existing gateway ChatGPT OAuth route. Existing agent reasoning
 fallbacks remain unchanged and can have their own costs.
 

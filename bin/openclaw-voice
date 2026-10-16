@@ -25,8 +25,8 @@ def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'toggle'
     if mode == 'open':
         mode = 'toggle'
-    if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight'}:
-        raise SystemExit('Usage: openclaw-voice [toggle|stop|mute|status|preflight]')
+    if mode not in {'toggle', 'stop', 'mute', 'status', 'preflight', 'standby-once', 'standby-conversation'}:
+        raise SystemExit('Usage: openclaw-voice [toggle|stop|mute|status|preflight|standby-once|standby-conversation]')
     runtime = os.environ.get('XDG_RUNTIME_DIR')
     if not runtime:
         raise SystemExit('Run OpenClaw Voice inside your desktop session.')
@@ -73,7 +73,7 @@ def main():
             result = status if mode == 'status' else request(mode)
         print(json.dumps(result))
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
-        if mode == 'toggle':
+        if mode in {'toggle', 'standby-once', 'standby-conversation'}:
             # A timed-out start may have reached the daemon. Cancel it rather than
             # reporting failure while leaving a microphone running.
             subprocess.run(['systemctl', '--user', 'stop', unit], check=False)

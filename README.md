@@ -219,7 +219,8 @@ Microphone mute sends silence while keeping the input device open; Stop releases
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.
-There is no wake-word listener in this version.
+The installed v0.4.1 release has no wake listener. Optional wake activation is
+a development candidate, disabled by default; see [wake activation](docs/WAKE-WORD.md).
 
 OpenClaw requires a fresh confirmation for voice actions it classifies as
 high-impact, including computer/node control such as opening an app. Answer the
