@@ -33,6 +33,7 @@ class AudioWorker:
         self.pipeline = self.webrtc = None
         self.offer_sent = self.stopping = self.connected = self.muted = False
         self.output_muted = False
+        self.capture_ready = False
         self.input_level = self.output_level = 0.0
         self.output_updated = 0.0
         self.negotiating = False
@@ -181,6 +182,7 @@ class AudioWorker:
                 db = max(values) if values else -100
                 value = min(1.0, 5 * 10 ** (db / 20)) if math.isfinite(db) and db > -42 else 0.0
                 if message.src.get_name() == 'microphone':
+                    self.capture_ready = True
                     self.input_level = 0.0 if self.muted else value
                 else:
                     self.output_level = 0.0 if self.output_muted else value
@@ -191,7 +193,8 @@ class AudioWorker:
             return False
         if time.monotonic() - self.output_updated > 0.3:
             self.output_level = 0.0
-        self.emit('levels', active=self.connected, muted=self.muted, outputMuted=self.output_muted,
+        self.emit('levels', active=self.connected, captureReady=self.capture_ready,
+                  muted=self.muted, outputMuted=self.output_muted,
                   input=self.input_level, output=self.output_level)
         return True
 

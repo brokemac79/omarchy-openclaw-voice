@@ -40,6 +40,9 @@ export async function createState(directory) {
         inputMuted: controls.inputMuted === true, inputMuteRequested: controls.inputMuteRequested === true,
         speechQuiet: controls.speechQuiet === true, speechQuietRequested: controls.speechQuietRequested === true,
         workStatus: 'unknown', cancelAvailable: false,
+        startupStage: typeof controls.startupStage === 'string' ? controls.startupStage.slice(0, 40) : null,
+        errorCode: typeof controls.errorCode === 'string' ? controls.errorCode.slice(0, 40) : null,
+        recoveryAction: String(controls.recoveryAction || '').slice(0, 240),
         lastResult: String(controls.lastResult || '').slice(-TRANSCRIPT_LIMIT) };
       if (JSON.stringify(state) !== JSON.stringify(next)) {
         state = next; dirty = true;

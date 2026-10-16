@@ -23,15 +23,16 @@ test('mute during launch survives startup and is displayed only after worker ack
   const work = f.owner.start(); await tick(); f.owner.mute();
   resolve({ start: async o => { options = o; }, close: async () => {} }); await work;
   assert.equal(options.muted, true); assert.equal(f.owner.muteConfirmed, false);
-  callbacks.onTelemetry({ active: true, muted: true, input: 1, output: 0.5 });
+  callbacks.onTelemetry({ active: true, captureReady: true, muted: true, input: 1, output: 0.5 });
   assert.equal(f.owner.muteConfirmed, true); assert.deepEqual(f.meters.at(-1), [0, 0.5]);
-  assert.equal(f.states.at(-1)[1], 'Microphone muted'); await f.owner.stop();
+  assert.equal(f.states.at(-1)[3].inputMuted, true);
+  assert.doesNotMatch(f.states.at(-1)[1], /Listening/); await f.owner.stop();
 });
 test('old engine callbacks cannot stop or overwrite a replacement', async () => {
   const callbacks = [];
   const f = fixture(async c => { callbacks.push(c); return { start: async () => {}, close: async () => {} }; });
   await f.owner.start(); await f.owner.stop(); await f.owner.start();
-  callbacks[0].onFailure('old error'); callbacks[0].onTelemetry({ active: true });
+  callbacks[0].onFailure('old error'); callbacks[0].onTelemetry({ active: true, captureReady: true });
   assert.equal(f.owner.requested, true); assert.equal(f.owner.active, false);
   await f.owner.stop();
 });
@@ -64,7 +65,7 @@ test('telemetry preserves both speech bubbles and stop or failure clears them', 
   await f.owner.start();
   f.owner.talk({ type: 'transcript.done', payload: { text: 'A question' } });
   f.owner.talk({ type: 'output.text.delta', payload: { text: 'An answer' } });
-  f.owner.telemetry({ active: true, input: 0, output: 0.5 });
+  f.owner.telemetry({ active: true, captureReady: true, input: 0, output: 0.5 });
   assert.deepEqual(f.states.at(-1)[2], { user: 'A question', assistant: 'An answer' });
   await f.owner.stop('Connection failed');
   assert.deepEqual(f.states.at(-1)[2], { user: '', assistant: '' });

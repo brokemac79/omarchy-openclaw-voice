@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { OFFER_PATH } from './policy.mjs';
+import { VoiceError } from './voice-errors.mjs';
 
 // Bound the accumulated UTF-8 SDP bytes, including chunked/unknown-length bodies.
 // Fetch may deliver a larger transport chunk; reject it before copying/decoding.
@@ -35,22 +36,25 @@ export async function readSdpAnswer(response, signal) {
 
 // Credentials stay in Node; the audio worker only receives SDP and device names.
 export async function launchEngine(config, session, { syntheticSilence = false,
-  onFailure, onTelemetry, spawnWorker = spawn, exchange = fetch } = {}) {
+  onFailure, onTelemetry, onProgress, spawnWorker = spawn, exchange = fetch } = {}) {
   const args = [fileURLToPath(new URL('../native/audio.py', import.meta.url))];
   if (syntheticSilence) args.push('--synthetic-silence');
   const worker = spawnWorker(config.python, args, { stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, PYTHONUNBUFFERED: '1' } });
-  let closed = false, failed = false, ready = false, started = false, offered = false;
+  let closed = false, failed = false, ready = false, started = false, offered = false, answered = false;
   let desiredMute = false, desiredQuiet = false, buffer = '', resolveReady, rejectReady, closePromise;
   const aborter = new AbortController();
   const readiness = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
   const exited = new Promise(resolve => worker.once('close', resolve));
-  function fail() {
+  function fail(error) {
     if (closed || failed) return;
     failed = true;
     aborter.abort();
-    rejectReady(new Error('Native audio engine unavailable.'));
-    onFailure?.('Native audio failed. Check microphone, speakers and connection.');
+    const failure = error instanceof VoiceError ? error : new VoiceError(
+      error?.name === 'TimeoutError' && offered && !answered ? 'offer_timeout'
+        : answered ? 'audio_transport_failed' : offered ? 'offer_failed' : ready ? 'audio_setup_failed' : 'native_unavailable');
+    rejectReady(failure);
+    onFailure?.(failure);
   }
   function send(data) {
     if (!closed && !failed) worker.stdin.write(JSON.stringify(data) + '\n');
@@ -60,6 +64,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
     if (offered || !started || !grant || typeof sdp !== 'string' || sdp.length > 131072 ||
         !sdp.startsWith('v=0') || !sdp.includes('m=audio') || /m=(video|application)/.test(sdp)) throw new Error('Invalid offer.');
     offered = true;
+    onProgress?.('offer-started');
     const signal = AbortSignal.any([aborter.signal, AbortSignal.timeout(25000)]);
     const response = await exchange(config.gatewayUrl.replace(/^ws(s?):/, 'http$1:') + OFFER_PATH, {
       method: 'POST', redirect: 'error',
@@ -71,7 +76,9 @@ export async function launchEngine(config, session, { syntheticSilence = false,
       throw new Error('Offer rejected.');
     }
     const answer = await readSdpAnswer(response, signal);
-    if (!closed && session.grant === grant) send({ command: 'answer', sdp: answer });
+    if (!closed && session.grant === grant) {
+      answered = true; onProgress?.('offer-answered'); send({ command: 'answer', sdp: answer });
+    }
   }
   worker.stdout.setEncoding('utf8');
   worker.stdout.on('data', chunk => {
@@ -84,10 +91,12 @@ export async function launchEngine(config, session, { syntheticSilence = false,
       try {
         const message = JSON.parse(line);
         if (message.event === 'ready' && !ready && message.syntheticSilence === syntheticSilence) {
-          ready = true; resolveReady();
+          ready = true; onProgress?.('native-worker-ready'); resolveReady();
         } else if (message.event === 'offer') void offer(message.sdp).catch(fail);
         else if (message.event === 'levels') onTelemetry?.(message);
-        else if (message.event === 'error') fail();
+        else if (message.event === 'error') fail(new VoiceError(
+          ['connection-failed', 'connection-disconnected', 'connection-closed'].includes(message.code)
+            ? 'audio_transport_failed' : 'audio_setup_failed'));
       } catch { fail(); }
     }
   });
@@ -98,10 +107,11 @@ export async function launchEngine(config, session, { syntheticSilence = false,
     async start({ muted = false, outputMuted = false } = {}) {
       desiredMute = muted;
       desiredQuiet = outputMuted;
-      await session.create();
+      await session.create(onProgress);
       if (closed || failed) return;
       started = true;
       send({ command: 'start', muted: desiredMute, outputMuted: desiredQuiet, inputDevice: config.inputDevice, outputDevice: config.outputDevice });
+      onProgress?.('audio-requested');
     },
     mute(value) { desiredMute = value; if (started) send({ command: 'mute', muted: value }); },
     quiet(value) { desiredQuiet = value; if (started) send({ command: 'quiet', outputMuted: value }); },
@@ -117,7 +127,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
       return closePromise;
     },
   };
-  const timeout = setTimeout(fail, 10000);
+  const timeout = setTimeout(() => fail(new VoiceError('audio_setup_timeout')), 10000);
   try { await readiness; return handle; }
   catch (error) { await handle.close(); throw error; }
   finally { clearTimeout(timeout); }

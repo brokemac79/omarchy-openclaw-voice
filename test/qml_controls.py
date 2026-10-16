@@ -55,6 +55,9 @@ ShellRoot {
       panel.current = false;
       if (panel.invoke("quiet") || panel.invoke("mute")) failures++;
       if (!panel.invoke("stop")) failures++;
+      panel.current = true;
+      panel.voiceState = ({callRequested:false, text:"Device pairing required", recoveryAction:"Approve this device in OpenClaw, then start voice again."});
+      if (panel.inCall || panel.invoke("quiet") || !panel.voiceState.recoveryAction) failures++;
       if (panel.implicitHeight > 620 || panel.implicitHeight < 200) failures++;
     } else {
       panel.visible = false;

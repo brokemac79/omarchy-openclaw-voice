@@ -25,6 +25,8 @@ and remains visible independently of the optional OMA-derived orb.
 `VoiceControls.qml` adds a deliberately opened panel for independent input mute,
 speech Quiet and End voice. It uses the Omarchy theme and keeps unsupported
 request cancellation visibly unavailable.
+The bar and status panel also add preparation/ready feedback and locally defined
+recovery guidance; startup diagnostics remain outside the conversation surfaces.
 
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision

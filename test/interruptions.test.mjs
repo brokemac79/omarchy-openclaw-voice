@@ -18,14 +18,14 @@ function fixture() {
 test('Quiet silences output only after acknowledgment and keeps input, call and text alive', async () => {
   const f = fixture(); await f.owner.start();
   f.owner.talk({ type: 'session.ready' });
-  f.owner.telemetry({ active: true, input: 0.6, output: 0.5 });
+  f.owner.telemetry({ active: true, captureReady: true, input: 0.6, output: 0.5 });
   f.owner.talk({ type: 'output.text.delta', seq: 1, payload: { text: 'Text survives ' } });
   f.owner.quiet(); f.owner.quiet();
   assert.equal(f.owner.controls().speechQuiet, false);
   assert.equal(f.owner.controls().speechQuietRequested, true);
   assert.deepEqual(f.media, [['output', true], ['output', true]]);
   assert.equal(f.releases(), 0); assert.equal(f.callsClosed(), 0);
-  f.owner.telemetry({ active: true, outputMuted: true, input: 0.6, output: 0.5 });
+  f.owner.telemetry({ active: true, captureReady: true, outputMuted: true, input: 0.6, output: 0.5 });
   assert.deepEqual(f.levels.at(-1), [0.6, 0]);
   assert.equal(f.owner.controls().speechQuiet, true);
   assert.equal(f.owner.controls().inputMuted, false);

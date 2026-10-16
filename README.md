@@ -207,6 +207,12 @@ UI pairing. Review enrollment before upgrading an existing service.
 
 ## Controls and limits
 
+On the main branch, startup shows Connecting or Preparing voice until microphone frames, native
+transport and Talk readiness are all confirmed. The compact Ready cue then
+indicates when to speak. Component-specific failures show a recovery action;
+reconnecting the Gateway never starts audio. See [startup readiness and timing
+boundaries](docs/STARTUP-READINESS.md).
+
 | Control | Action |
 | --- | --- |
 | Bar icon / app launcher / opted-in Super+Shift+V | Start or end the conversation |
@@ -217,6 +223,7 @@ UI pairing. Review enrollment before upgrading an existing service.
 | `openclaw-voice cancel-request` | Report unavailable until an exact request cancellation contract exists |
 | `openclaw-voice status` | Show local connection and microphone state |
 | `openclaw-voice preflight` | Check visible gateway authentication and voice readiness |
+| `openclaw-voice diagnostics` | Show bounded startup/first-reply timings and sanitized failure codes without starting audio |
 | `openclaw-voice standby-conversation` | Explicitly arm an independently configured local wake detector; Talk stays open after activation |
 
 Right-click the bar icon for separate **Mute input**, **Quiet** and **End voice**

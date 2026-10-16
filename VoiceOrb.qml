@@ -58,6 +58,7 @@ Item {
 
   property string status: "stopped"
   property string label: ""
+  property string recoveryAction: ""
   property string userWords: ""
   property string replyWords: ""
   // Loudness 0..1 of each side of the conversation, straight off the daemon.
@@ -81,14 +82,14 @@ Item {
   readonly property bool active: status === "listening" || status === "thinking"
                               || status === "acting" || status === "confirm"
                               || status === "error"
-                              || status === "standby" || status === "connecting" || status === "stopping"
+                              || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
   readonly property bool awake: active && fresh
   readonly property bool orbVisible: showOrb && awake
   readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
   readonly property string statusText: ({
-    listening: "Listening", thinking: "Thinking", acting: "Working",
+    listening: label.startsWith("Microphone muted") ? "Ready · Input muted" : label.startsWith("Talk ready") ? "Ready · Listening" : "Listening", thinking: "Thinking", acting: "Working",
     confirm: "Confirmation needed", error: "Voice unavailable",
-    standby: "Standby · Local microphone", connecting: "Connecting · Wait for Talk", stopping: "Stopping · Releasing microphone"
+    standby: "Standby · Local microphone", preparing: "Preparing voice · Please wait", connecting: "Connecting · Wait for Talk", stopping: "Stopping · Releasing microphone"
   })[status] || label
 
   readonly property color tint: {
@@ -153,12 +154,14 @@ Item {
         const parsed = JSON.parse(stateFile.text())
         root.status = parsed.status || "idle"
         root.label = parsed.text || ""
+        root.recoveryAction = parsed.recoveryAction || ""
         root.userWords = typeof parsed.user === "string" ? parsed.user : ""
         root.replyWords = typeof parsed.assistant === "string" ? parsed.assistant : ""
         root.updatedAt = Number(parsed.updated) || 0
       } catch (e) {
         root.status = "error"
         root.label = ""
+        root.recoveryAction = ""
         root.userWords = root.replyWords = ""
         root.updatedAt = 0
       }
@@ -166,6 +169,7 @@ Item {
     onLoadFailed: {
       root.status = "stopped"
       root.label = ""
+      root.recoveryAction = ""
       root.userWords = root.replyWords = ""
       root.updatedAt = 0
     }
@@ -273,13 +277,22 @@ Item {
           }
           Text {
             width: parent.width
-            visible: root.label !== "" && (root.status === "error" || root.status === "standby"
+            visible: root.label !== "" && (root.status === "error" || root.status === "standby" || root.status === "preparing"
                      || root.status === "connecting" || root.label.includes("standby") || root.label.includes("open conversation"))
             text: root.label
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
             maximumLineCount: 3
             elide: Text.ElideRight
+            color: Color.notifications.text
+            font.pixelSize: 13
+          }
+          Text {
+            width: parent.width
+            visible: root.status === "error" && root.recoveryAction !== ""
+            text: root.recoveryAction
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
             color: Color.notifications.text
             font.pixelSize: 13
           }

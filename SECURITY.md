@@ -31,6 +31,13 @@ or audio failure, until dismissed, the next call or companion shutdown. No
 transcript history is added. Exact request cancellation is unavailable for the
 current native route; see [interruption controls](docs/INTERRUPTIONS.md).
 
+Startup diagnostics expose bounded monotonic durations and closed milestone/error
+codes through a separate local command. They exclude speech, credentials,
+connection identifiers and endpoints. Recovery guidance comes from local text,
+not upstream error messages. Ready requires microphone frames, native transport
+and current Talk readiness; reconnect never activates capture. See
+[startup readiness](docs/STARTUP-READINESS.md).
+
 Optional wake support is disabled by default. Explicitly arming Standby opens a
 local detector microphone; Standby is not microphone off. Its bounded frames
 remain local and are not recorded or sent to the Gateway/provider. Detection

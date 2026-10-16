@@ -34,7 +34,7 @@ test('Talk readiness requires both native transport and the current session read
   const f = fixture();
   f.owner.launch = async () => ({ start: async () => {}, close: async () => {} });
   await f.owner.start();
-  f.owner.telemetry({ active: true });
+  f.owner.telemetry({ active: true, captureReady: true });
   assert.equal(f.owner.active, false); assert.equal(f.states.at(-1)[0], 'connecting');
   f.owner.talk({ type: 'output.text.delta', payload: { text: 'Synthetic early event' } });
   assert.equal(f.states.at(-1)[0], 'connecting');
@@ -42,14 +42,14 @@ test('Talk readiness requires both native transport and the current session read
   assert.equal(f.owner.active, true); assert.equal(f.states.at(-1)[0], 'listening');
   await f.owner.stop(); await f.owner.start();
   f.owner.talk({ type: 'session.ready' }); assert.equal(f.owner.active, false);
-  f.owner.telemetry({ active: true }); assert.equal(f.owner.active, true); await f.owner.stop();
+  f.owner.telemetry({ active: true, captureReady: true }); assert.equal(f.owner.active, true); await f.owner.stop();
 });
 test('duplicate wakes release detector before Talk and late playback wakes cannot reactivate', async () => {
   const f = fixture(); await f.owner.arm('conversation'); const detector = f.callbacks[0];
   detector.onWake(); detector.onWake(); await f.owner.startup;
   assert.equal(f.talks(), 1); assert.equal(f.maximum(), 1);
   assert.equal(f.owner.active, false); assert.equal(f.owner.phase, 'connecting');
-  f.time(321); f.owner.telemetry({ active: true, output: 1 });
+  f.time(321); f.owner.telemetry({ active: true, captureReady: true, output: 1 });
   assert.equal(f.owner.wakeToReadyMs, 321);
   f.owner.talk({ type: 'output.audio.started' }); detector.onWake();
   assert.equal(f.talks(), 1); assert.equal(f.owner.standby, false);
@@ -98,12 +98,12 @@ test('standby mute releases input; a muted input cannot trigger Talk', async () 
 });
 test('one request waits for muted input and quiet playback before explicitly rearming', async () => {
   const f = fixture(); await f.owner.arm('one-request'); f.callbacks[0].onWake(); await f.owner.startup;
-  f.owner.telemetry({ active: true, output: 1 }); f.time(100);
+  f.owner.telemetry({ active: true, captureReady: true, output: 1 }); f.time(100);
   f.owner.talk({ type: 'turn.ended' });
   f.time(2000); f.owner.checkHealth(); assert.equal(f.owner.standby, false);
-  f.owner.telemetry({ active: true, muted: true, output: 1 });
+  f.owner.telemetry({ active: true, captureReady: true, muted: true, output: 1 });
   f.time(3400); f.owner.checkHealth(); assert.equal(f.owner.standby, false);
-  f.owner.telemetry({ active: true, muted: true, output: 0 });
+  f.owner.telemetry({ active: true, captureReady: true, muted: true, output: 0 });
   f.time(3600); f.owner.checkHealth(); await tick(); await f.owner.startup;
   assert.equal(f.owner.standby, true); assert.equal(f.maximum(), 1);
   assert.equal(f.talks(), 1); await f.owner.stop();
@@ -112,7 +112,7 @@ test('Stop/disconnect while returning to standby cancels the selected mode', asy
   const f = fixture(), cleanup = deferred();
   await f.owner.arm('one-request'); f.callbacks[0].onWake(); await f.owner.startup;
   f.owner.session.close = () => cleanup.promise;
-  f.owner.telemetry({ active: true, muted: true }); f.owner.talk({ type: 'turn.ended' });
+  f.owner.telemetry({ active: true, captureReady: true, muted: true }); f.owner.talk({ type: 'turn.ended' });
   f.time(1600); f.owner.checkHealth();
   const stop = f.owner.stop('Gateway disconnected. Microphone off.');
   cleanup.resolve(); await stop; await tick();
@@ -121,7 +121,7 @@ test('Stop/disconnect while returning to standby cancels the selected mode', asy
 });
 test('open conversation never returns automatically; manual Talk does not inherit a wake mode', async () => {
   const f = fixture(); await f.owner.arm('conversation'); f.callbacks[0].onWake(); await f.owner.startup;
-  f.owner.telemetry({ active: true }); f.owner.talk({ type: 'turn.ended' }); f.time(2000); f.owner.checkHealth();
+  f.owner.telemetry({ active: true, captureReady: true }); f.owner.talk({ type: 'turn.ended' }); f.time(2000); f.owner.checkHealth();
   assert.equal(f.owner.requested, true); assert.equal(f.owner.standby, false);
   await f.owner.stop(); await f.owner.arm('one-request'); await f.owner.start();
   assert.equal(f.owner.wakeMode, 'off'); assert.equal(f.maximum(), 1); await f.owner.stop();

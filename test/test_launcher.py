@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import runpy
 from unittest.mock import patch
@@ -16,7 +17,7 @@ LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
 class InstanceLauncherTests(unittest.TestCase):
     def test_in_call_controls_never_start_or_stop_a_service_on_failed_delivery(self):
         module = runpy.run_path(str(LAUNCHER))
-        for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result'):
+        for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics'):
             with self.subTest(mode=mode), \
                     patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': 'test', 'XDG_RUNTIME_DIR': '/tmp/test'}), \
                     patch.object(sys, 'argv', [str(LAUNCHER), mode]), \
@@ -70,6 +71,50 @@ class InstanceLauncherTests(unittest.TestCase):
 
 @unittest.skipIf(os.name == 'nt', 'Linux launcher and Unix socket')
 class LauncherTests(unittest.TestCase):
+    def test_pairing_failure_stays_visible_without_sending_activation_or_starting_another_service(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / 'openclaw-voice').mkdir()
+            commands = []
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+                server.bind(str(root / 'openclaw-voice/control.sock')); server.listen(); server.settimeout(5)
+                def reply():
+                    for _ in range(2):
+                        with server.accept()[0] as client:
+                            commands.append(json.loads(client.recv(8192))['command'])
+                            client.sendall(b'{"ok":true,"connected":false,"errorCode":"pairing_required"}\n')
+                worker = threading.Thread(target=reply, daemon=True); worker.start()
+                result = subprocess.run([sys.executable, str(LAUNCHER), 'toggle'],
+                                        env={**os.environ, 'OPENCLAW_VOICE_INSTANCE': 'default',
+                                             'XDG_RUNTIME_DIR': str(root), 'PATH': str(root)},
+                                        capture_output=True, text=True, timeout=5)
+                worker.join(timeout=2)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(json.loads(result.stdout)['errorCode'], 'pairing_required')
+                self.assertEqual(commands, ['status', 'status'])
+
+    def test_activation_carries_one_monotonic_invocation_time_without_resubmission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / 'openclaw-voice').mkdir()
+            messages = []
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+                server.bind(str(root / 'openclaw-voice/control.sock')); server.listen(); server.settimeout(5)
+                def reply():
+                    for _ in range(3):
+                        with server.accept()[0] as client:
+                            messages.append(json.loads(client.recv(8192)))
+                            client.sendall(b'{"ok":true,"connected":true}\n')
+                worker = threading.Thread(target=reply, daemon=True); worker.start()
+                before = time.monotonic() * 1000
+                result = subprocess.run([sys.executable, str(LAUNCHER), 'toggle'],
+                                        env={**os.environ, 'OPENCLAW_VOICE_INSTANCE': 'default',
+                                             'XDG_RUNTIME_DIR': str(root), 'PATH': str(root)},
+                                        capture_output=True, text=True, timeout=5)
+                after = time.monotonic() * 1000; worker.join(timeout=2)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual([message['command'] for message in messages], ['status', 'status', 'toggle'])
+                self.assertLessEqual(before, messages[-1]['invokedAtMs'])
+                self.assertLessEqual(messages[-1]['invokedAtMs'], after)
+
     def test_in_call_commands_and_end_alias_use_only_the_selected_existing_socket(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
