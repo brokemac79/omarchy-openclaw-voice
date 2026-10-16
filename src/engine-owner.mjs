@@ -23,6 +23,7 @@ export class EngineOwner {
     this.sessionReady = this.transportActive = false;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
+    this.answer = this.transcript.getAnswer();
     this.actions = new ActionProgress();
     this.reviewRequired = false;
     this.readiness = new Readiness(now); this.failure = null; this.gatewayConnected = true;
@@ -90,6 +91,7 @@ export class EngineOwner {
     this.actions.clear();
     this.reviewRequired = true;
     this.transcript.clear();
+    this.answer = this.transcript.getAnswer();
     const epoch = ++this.epoch, previous = this.startup;
     this.phase = 'connecting'; this.caption = 'Connecting to OpenClaw — wait for Talk'; this.render();
     const work = (async () => {
@@ -187,6 +189,7 @@ export class EngineOwner {
   }
   dismissResult() {
     this.lastResult = ''; this.actions.dismiss();
+    this.transcript.clearAnswer(); this.answer = this.transcript.getAnswer();
     if (!this.requested && !this.standby && !this.standbyStarting) this.reviewRequired = false;
     this.render();
   }
@@ -195,6 +198,7 @@ export class EngineOwner {
       inputMuteRequested: this.muted, speechQuiet: this.outputMuteConfirmed,
       speechQuietRequested: this.outputMuted, workStatus: 'unknown',
       cancelAvailable: false, lastResult: this.lastResult,
+      answer: this.answer,
       ...this.actions.snapshot(),
       reviewRequired: this.reviewRequired, ...this.getDestination(),
       startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
@@ -224,6 +228,7 @@ export class EngineOwner {
       this.muted = true; this.engine?.mute(true);
     }
     const acceptedText = this.transcript.accept(data);
+    if (acceptedText && data.type.startsWith('output.text.')) this.answer = this.transcript.getAnswer();
     if (acceptedText && data.type === 'output.text.done') this.lastResult = this.transcript.get().assistant;
     const phases = { 'transcript.delta': 'listening', 'transcript.done': 'thinking',
       'output.audio.started': 'acting', 'output.audio.done': 'listening',

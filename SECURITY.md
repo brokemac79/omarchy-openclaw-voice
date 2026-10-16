@@ -31,6 +31,15 @@ or audio failure, until dismissed, the next call or companion shutdown. No
 transcript history is added. Exact request cancellation is unavailable for the
 current native route; see [interruption controls](docs/INTERRUPTIONS.md).
 
+The explicitly opened answer reader keeps a separate bounded beginning of the
+most recent received reply in private volatile runtime state. End/failure retain
+partial or final text; dismissal, a new call and shutdown clear it. Stale state
+hides it. Text is literal, and only deliberate copy actions write the clipboard.
+Copied text can be retained by desktop clipboard managers. The separate link
+list allows only bounded HTTP/HTTPS URLs without embedded credentials or control
+characters, opened through Qt only on explicit activation. It adds no HTML or
+code execution. See [answer limits](docs/ANSWERS.md).
+
 Action cards confirm transcription only, then report unknown outcomes. Provider
 replies and tool-shaped payloads cannot establish host success or cancellation.
 Their correlation ledger and visible cards are bounded and volatile; they add
