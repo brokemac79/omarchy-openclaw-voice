@@ -35,3 +35,24 @@ class WakeGateTests(unittest.TestCase):
         for score in (-1, 2, float('inf'), float('nan')):
             with self.assertRaises(ValueError):
                 WakeGate().accept(score, True)
+
+    def test_delayed_prediction_after_speech_uses_only_bounded_activity(self):
+        gate = WakeGate(settle_frames=0)
+        self.assertFalse(gate.accept(0.1, True))
+        self.assertFalse(gate.accept(0.9, False))
+        self.assertFalse(gate.accept(0.9, False))
+        self.assertTrue(gate.accept(0.9, False))
+        self.assertFalse(gate.accept(0.9, False))
+
+        stale = WakeGate(settle_frames=0)
+        self.assertFalse(stale.accept(0.1, True))
+        for _ in range(12):
+            self.assertFalse(stale.accept(0.1, False))
+        for _ in range(100):
+            self.assertFalse(stale.accept(0.9, False))
+
+    def test_settling_audio_cannot_arm_a_later_silent_prediction(self):
+        gate = WakeGate(settle_frames=1)
+        self.assertFalse(gate.accept(0.9, True))
+        for _ in range(100):
+            self.assertFalse(gate.accept(0.9, False))
