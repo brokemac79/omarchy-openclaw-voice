@@ -34,7 +34,7 @@ by Dismiss text, the next explicit call or companion shutdown; no history or
 recording is added. Text that never reached the companion cannot be recovered
 here. The Gateway's own fallback text delivery remains untouched.
 
-## Cancellation contract gap
+## Request cancellation is outside this feature
 
 The source audit uses the same public OpenClaw revision as the deployed Gateway:
 `9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa` (build `2026.10.3`).
@@ -62,9 +62,10 @@ Enabling the button requires an upstream, authenticated control bound to both th
 selected voice session and exact admitted request, with correlated outcomes.
 That contract must distinguish cancellation accepted, already completed,
 rejected and unknown, survive cancellation/completion races, and prevent a late
-click or retry from cancelling replacement work. This part of issue #2 remains
-open; the current change implements the independent media controls and truthful
-unavailable state.
+click or retry from cancelling replacement work. At the owner's request,
+exact-request cancellation is outside the scope of issue #2. This implementation
+provides independent media controls and a truthful unavailable state; it does
+not implement host-work cancellation.
 
 ## Validation
 
