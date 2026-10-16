@@ -290,6 +290,16 @@ cannot by itself establish that the host request has completed. This is a
 snapshot-level source finding, not new installed-version or live-provider proof.
 Do not infer completion from caption text or another call's agent events.
 
+The same limitation was rechecked against public revision
+`9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa`. In its relocated
+[Gateway-control owner](https://github.com/openclaw/openclaw/blob/9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa/src/gateway/talk/client-gateway-control.ts),
+`runConsult` awaits host work and submits the result independently of
+`onResponseDone`. Its [session harness](https://github.com/openclaw/openclaw/blob/9ad5e98edb514da1ceb4d98af1b8a2817d6eb8aa/src/talk/realtime-session-harness.ts)
+still ends the turn on the provider-response outcome. A companion cannot
+qualify single-request completion using this response event alone. Keep that
+mode disabled pending a correlated completion contract; human wake accuracy
+testing cannot resolve this missing API boundary.
+
 `standby-conversation` leaves Talk open until Stop, failure or disconnect. It
 does not return automatically. Stop always means Off, including one-request
 mode. To change modes, Stop and arm again. Standby mute also means Off.
@@ -338,4 +348,6 @@ the installed release until that trial is authorized:
    not establish room accuracy or Surface battery cost.
 
 Publication, installation, service restarts and physical audio are separate
-owner decisions. This candidate is source and synthetic validation work only.
+owner decisions. Synthetic checks alone do not qualify a release. Keep private
+manual-trial results separate from public fixtures and distinguish observed
+room behavior from general accuracy or battery-life claims.
