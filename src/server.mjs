@@ -10,6 +10,7 @@ import { launchWakeDetector } from './wake-detector.mjs';
 import { listenControl } from './control.mjs';
 import { MODEL } from './policy.mjs';
 import { VoiceError, failureDetails, gatewayFailure } from './voice-errors.mjs';
+import { Destinations } from './destinations.mjs';
 
 const config = await loadConfig();
 const syntheticSilence = process.env.OPENCLAW_VOICE_TEST_SILENCE === '1';
@@ -18,7 +19,7 @@ const runtime = join(process.env.XDG_RUNTIME_DIR, config.instance.basename);
 // Fail before acquiring control or connecting if the selected SDK is unavailable.
 const { sdk: { GatewayClient, startGatewayClientWhenEventLoopReady }, binding: gatewaySdk } = await loadGatewaySdk(config.sdk);
 const connection = createConnectionStatus();
-let connected = false, shuttingDown = false, owner, session, native;
+let connected = false, shuttingDown = false, owner, session, native, destinations;
 const status = () => ({ connected, requested: owner.requested, active: owner.active,
   standby: owner.standby, standbyStarting: owner.standbyStarting, wakeMode: owner.wakeMode,
   wakeEnabled: config.wake?.enabled === true && !syntheticSilence,
@@ -31,14 +32,23 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
   if (!owner || shuttingDown) throw new Error('Voice is not ready.');
   switch (command) {
     case 'status': return status();
+    case 'destinations': await destinations.refresh(); return destinations.snapshot();
+    case 'select-destination':
+      try { await destinations.select(invocation.destinationId); return { ...status(), selectionChanged: true }; }
+      catch (error) { return { ...status(), selectionChanged: false, selectionFailure: failureDetails(error) }; }
     case 'diagnostics': return { ...owner.readiness.snapshot(), ready: owner.active,
       gatewayConnected: connected, errorCode: owner.failure?.code ?? null, startupStage: owner.startupStage };
     case 'preflight':
-      try { return { ready: true, ...await session.preflight() }; }
+      try {
+        await destinations.refresh();
+        if (destinations.snapshot().destination.state !== 'ready') throw new VoiceError('destination_unavailable');
+        return { ready: true, ...await session.preflight() };
+      }
       catch (error) { return { ready: false, failure: failureDetails(error) }; }
     case 'toggle':
       if (owner.requested) await owner.stop();
       else if (!connected) await owner.fail(new VoiceError('gateway_unavailable'));
+      else if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) await owner.fail(new VoiceError('destination_unavailable'));
       else void owner.start(invocation);
       return status();
     case 'stop': await owner.stop(); return status();
@@ -49,6 +59,7 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
     case 'standby-once':
     case 'standby-conversation':
       if (!connected || syntheticSilence || config.wake?.enabled !== true) throw new Error('Wake unavailable.');
+      if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) throw new VoiceError('destination_unavailable');
       void owner.arm(command === 'standby-once' ? 'one-request' : 'conversation');
       return status();
     case 'mute': owner.mute(); return status();
@@ -62,13 +73,14 @@ const client = new GatewayClient({
   clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.4.1', mode: 'ui',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
-  onHelloOk: hello => { connection.accept(hello); connected = true; owner.setGatewayConnected(true); },
+  onHelloOk: hello => { connection.accept(hello); connected = true; destinations.setConnected(true); owner.setGatewayConnected(true); },
   onConnectError: error => {
-    connection.clear(); connected = false; owner.setGatewayConnected(false);
+    connection.clear(); connected = false; destinations.setConnected(false); owner.setGatewayConnected(false);
     if (!shuttingDown) void owner.fail(gatewayFailure(error));
   },
   onClose: () => {
     connection.clear(); connected = false;
+    destinations.setConnected(false);
     owner.setGatewayConnected(false);
     if (!shuttingDown && (owner.requested || owner.standby || !owner.failure)) void owner.fail(new VoiceError('gateway_disconnected'));
   },
@@ -85,19 +97,40 @@ const rpc = (method, params = {}) => {
   if (!connected) return Promise.reject(new Error('Gateway unavailable.'));
   return client.request(method, params, { timeoutMs: 15000 });
 };
-session = new VoiceSession(rpc, config.sessionKey, config.voice);
+destinations = new Destinations({ presets: config.destinations, path: config.selectionPath, rpc,
+  canSwitch: () => !!owner && !shuttingDown && !owner.requested && !owner.standby && !owner.standbyStarting
+    && !owner.engineStarting && owner.phase !== 'stopping' && !owner.mediaFault && !owner.reviewRequired
+    && !session.creating && !session.grant,
+  settle: async () => { await owner.cleanup; await session.close(); },
+  onChange: () => owner?.render(),
+  onInvalidated: () => {
+    if (owner?.requested || owner?.standby || owner?.standbyStarting) void owner.fail(new VoiceError('destination_unavailable'));
+  },
+});
+await destinations.load();
+session = new VoiceSession(rpc, config.sessionKey, config.voice, () => destinations.forCall());
 owner = new EngineOwner({ session, native,
+  getDestination: () => destinations.snapshot(), onStopped: () => destinations.endCall(),
   wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,
   launch: callbacks => launchEngine(config, session, { ...callbacks, syntheticSilence }),
   launchWake: !syntheticSilence && config.wake?.enabled === true
     ? callbacks => launchWakeDetector(config, callbacks) : undefined,
 });
 owner.setGatewayConnected(false);
-const healthTimer = setInterval(() => owner.checkHealth(), 1000);
+const healthTimer = setInterval(() => {
+  if ((owner.requested || owner.standby || owner.standbyStarting) && destinations.snapshot().destination.state !== 'ready') {
+    void owner.fail(new VoiceError('destination_unavailable'));
+  } else owner.checkHealth();
+  // Discovery can expire while a read is still pending; heartbeat freshness
+  // must not make an old destination snapshot look current.
+  owner.render();
+}, 1000);
 healthTimer.unref();
+const destinationTimer = setInterval(() => { void destinations.refresh(); }, 30000);
+destinationTimer.unref();
 async function shutdown(code = 0) {
   if (shuttingDown) return;
-  shuttingDown = true; clearInterval(healthTimer);
+  shuttingDown = true; clearInterval(healthTimer); clearInterval(destinationTimer);
   // systemd also kills the whole control group if a provider cleanup stalls.
   await owner.stop(); await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
 }

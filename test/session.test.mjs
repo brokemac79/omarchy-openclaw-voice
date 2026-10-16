@@ -51,3 +51,25 @@ test('normal Stop closes only the selected session and is idempotent', async () 
   const closes = f.calls.filter(c => c.method === 'talk.client.close');
   assert.deepEqual(closes, [{ method: 'talk.client.close', params: { sessionKey: 'agent:example:main', voiceSessionId: 'test-session' } }]);
 });
+
+test('reservation and late cleanup stay bound to the original destination even if another key is configured', async () => {
+  for (const cancel of [false, true]) {
+    const f = fixture(); const pending = f.session.create(); await waitCreate(f.calls);
+    f.session.sessionKey = 'agent:another:main';
+    const closing = cancel ? f.session.close() : null;
+    f.finish();
+    if (cancel) await assert.rejects(pending, /cancelled/); else await pending;
+    await (closing || f.session.close());
+    assert.equal(f.calls.find(call => call.method === 'talk.client.create').params.sessionKey, 'agent:example:main');
+    assert.equal(f.calls.find(call => call.method === 'talk.client.close').params.sessionKey, 'agent:example:main');
+  }
+});
+
+test('an unavailable destination refuses provider reservation before voice configuration or audio startup', async () => {
+  const calls = [];
+  const session = new VoiceSession(async method => { calls.push(method); }, 'agent:example:main', 'cove',
+    async () => { throw new Error('Synthetic unavailable destination'); });
+  await assert.rejects(session.create(), /unavailable destination/);
+  assert.deepEqual(calls, []); assert.equal(session.grant, null);
+  await session.close();
+});

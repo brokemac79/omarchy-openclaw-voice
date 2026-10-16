@@ -5,8 +5,9 @@ import { ActionProgress } from './action-progress.mjs';
 
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
-  constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false }) {
-    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now });
+  constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false,
+    getDestination = () => ({}), onStopped = () => {} }) {
+    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, onStopped });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.epoch = 0; this.engine = null;
@@ -23,6 +24,7 @@ export class EngineOwner {
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
     this.actions = new ActionProgress();
+    this.reviewRequired = false;
     this.readiness = new Readiness(now); this.failure = null; this.gatewayConnected = true;
     this.startupStage = null; this.captureReady = false;
   }
@@ -86,6 +88,7 @@ export class EngineOwner {
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
     this.actions.clear();
+    this.reviewRequired = true;
     this.transcript.clear();
     const epoch = ++this.epoch, previous = this.startup;
     this.phase = 'connecting'; this.caption = 'Connecting to OpenClaw — wait for Talk'; this.render();
@@ -134,6 +137,7 @@ export class EngineOwner {
       this.phase = message || this.mediaFault ? 'error' : 'idle';
       if (this.mediaFault) this.failure = failureDetails(new VoiceError('release_unconfirmed'));
       this.caption = this.mediaFault ? 'Audio release unconfirmed. Stop the companion service.' : message || 'Microphone off';
+      this.onStopped();
       this.render();
     }
     await this.cleanup;
@@ -181,13 +185,18 @@ export class EngineOwner {
     // Never substitute whole-session abort, provider-turn completion or Stop.
     return { outcome: 'unavailable', reason: 'exact_request_control_unavailable' };
   }
-  dismissResult() { this.lastResult = ''; this.actions.dismiss(); this.render(); }
+  dismissResult() {
+    this.lastResult = ''; this.actions.dismiss();
+    if (!this.requested && !this.standby && !this.standbyStarting) this.reviewRequired = false;
+    this.render();
+  }
   controls() {
     return { callRequested: this.requested, inputMuted: this.muteConfirmed,
       inputMuteRequested: this.muted, speechQuiet: this.outputMuteConfirmed,
       speechQuietRequested: this.outputMuted, workStatus: 'unknown',
       cancelAvailable: false, lastResult: this.lastResult,
       ...this.actions.snapshot(),
+      reviewRequired: this.reviewRequired, ...this.getDestination(),
       startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
       recoveryAction: this.failure?.recovery ?? '' };
   }

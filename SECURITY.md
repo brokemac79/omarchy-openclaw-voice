@@ -37,6 +37,15 @@ Their correlation ledger and visible cards are bounded and volatile; they add
 no execution payloads to diagnostics. See [action observations](docs/ACTION-PROGRESS.md)
 for the upstream contract required to finish result tracking.
 
+Destination presets resolve existing agents, exact sessions and any configured
+execution node through read-only Gateway discovery. They supply a session key
+to ordinary Talk creation without changing permissions or approvals. Selection
+is blocked during audio ownership and until retained outcomes are explicitly
+reviewed/dismissed. The instance's private selection file stores routing identity
+only; general diagnostics exclude it. Stale or unavailable destinations cannot
+start audio and never select another agent as a fallback. See
+[destination boundaries](docs/DESTINATIONS.md).
+
 Startup diagnostics expose bounded monotonic durations and closed milestone/error
 codes through a separate local command. They exclude speech, credentials,
 connection identifiers and endpoints. Recovery guidance comes from local text,

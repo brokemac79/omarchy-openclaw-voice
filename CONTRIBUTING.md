@@ -62,3 +62,8 @@ For action observations, run `python3 test/qml_action_cards.py` in the Omarchy
 graphical session. It uses synthetic Talk events, the real owner/state writer
 and actual QML components. Keep response events separate from execution evidence;
 see [the missing result contract](docs/ACTION-PROGRESS.md).
+
+For destination routing, also run `python3 test/qml_destinations.py` in Omarchy.
+Use synthetic discovery, fake SDK/media and private disposable selection files.
+Check active-call/review guards and old-call event isolation before claiming
+switching coverage; see [destination contracts](docs/DESTINATIONS.md).

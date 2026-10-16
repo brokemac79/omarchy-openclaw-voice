@@ -11,6 +11,7 @@ PanelWindow {
   property bool configured: false
   property bool busy: false
   signal execute(string command)
+  signal selectDestination(string id)
   visible: false
   anchors { top: true; right: true }
   margins { top: 52; right: 18 }
@@ -29,9 +30,16 @@ PanelWindow {
     if (!configured || busy) return false
     if (command === "mute" && (!inCall || inputPending)) return false
     if (["quiet", "resume-speech"].includes(command) && (!inCall || outputPending)) return false
-    if (!["mute", "quiet", "resume-speech", "stop", "dismiss-result"].includes(command)) return false
+    if (!["mute", "quiet", "resume-speech", "stop", "dismiss-result", "destinations"].includes(command)) return false
     execute(command)
     return true
+  }
+  function chooseDestination(id) {
+    const destination = voiceState.destination || {};
+    const choice = (voiceState.destinationChoices || []).find(value => value.id === id);
+    if (!configured || busy || !current || !destination.canSwitch || destination.switching
+        || !choice || choice.state !== "ready") return false
+    selectDestination(id); return true
   }
 
   Rectangle {
@@ -53,6 +61,15 @@ PanelWindow {
         width: viewport.width
         spacing: 10
         Text { text: "Voice controls"; color: Color.notifications.text; font.pixelSize: 15; font.bold: true }
+        DestinationPicker {
+          width: parent.width
+          destination: root.current ? root.voiceState.destination || ({}) : ({state:"stale"})
+          choices: root.current ? root.voiceState.destinationChoices || [] : []
+          enabled: root.configured && !root.busy
+          reviewRequired: root.voiceState.reviewRequired === true
+          onSelected: id => root.chooseDestination(id)
+          onRefresh: root.invoke("destinations")
+        }
         Text {
           width: parent.width
           text: root.current ? (root.voiceState.text || "Microphone off") : "Audio state unknown — use End voice"
@@ -120,7 +137,7 @@ PanelWindow {
         Row {
           spacing: 18
           Text {
-            visible: !!root.voiceState.lastResult || (root.voiceState.actionCards || []).length > 0 || root.voiceState.earlierUnknown > 0 || root.voiceState.additionalUnknown === true
+            visible: root.voiceState.reviewRequired === true || !!root.voiceState.lastResult || (root.voiceState.actionCards || []).length > 0 || root.voiceState.earlierUnknown > 0 || root.voiceState.additionalUnknown === true
             text: "Dismiss results"; color: Color.notifications.text; font.pixelSize: 12
             Accessible.role: Accessible.Button; Accessible.name: text
             Accessible.onPressAction: root.invoke("dismiss-result")

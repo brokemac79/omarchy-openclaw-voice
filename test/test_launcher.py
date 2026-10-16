@@ -17,16 +17,26 @@ LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
 class InstanceLauncherTests(unittest.TestCase):
     def test_in_call_controls_never_start_or_stop_a_service_on_failed_delivery(self):
         module = runpy.run_path(str(LAUNCHER))
-        for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics'):
+        for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination'):
             with self.subTest(mode=mode), \
                     patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': 'test', 'XDG_RUNTIME_DIR': '/tmp/test'}), \
-                    patch.object(sys, 'argv', [str(LAUNCHER), mode]), \
+                    patch.object(sys, 'argv', [str(LAUNCHER), mode] + (['fixture'] if mode == 'select-destination' else [])), \
                     patch('socket.AF_UNIX', 1, create=True), \
                     patch('socket.socket', side_effect=OSError('synthetic unavailable control')), \
                     patch('subprocess.run') as run:
                 with self.assertRaises(SystemExit):
                     module['main']()
                 self.assertFalse(any(call.args[0][0] == 'systemctl' for call in run.call_args_list))
+
+    def test_invalid_destination_is_rejected_before_io(self):
+        module = runpy.run_path(str(LAUNCHER))
+        for name in ('../bad', 'with space', 'x;true', 'x\n', ''):
+            with patch.object(sys, 'argv', [str(LAUNCHER), 'select-destination', name]), \
+                    patch('socket.socket') as sock, patch('subprocess.run') as run:
+                with self.assertRaises(SystemExit):
+                    module['main']()
+                sock.assert_not_called()
+                run.assert_not_called()
 
     def test_mapping_rejects_invalid_names_before_io(self):
         module = runpy.run_path(str(LAUNCHER))
@@ -71,6 +81,24 @@ class InstanceLauncherTests(unittest.TestCase):
 
 @unittest.skipIf(os.name == 'nt', 'Linux launcher and Unix socket')
 class LauncherTests(unittest.TestCase):
+    def test_destination_selection_sends_literal_preset_id_without_starting_a_service(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / 'openclaw-voice').mkdir()
+            requests = []
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+                server.bind(str(root / 'openclaw-voice/control.sock')); server.listen(); server.settimeout(5)
+                def reply():
+                    with server.accept()[0] as client:
+                        requests.append(json.loads(client.recv(8192)))
+                        client.sendall(b'{"ok":true,"selectionChanged":true}\n')
+                worker = threading.Thread(target=reply, daemon=True); worker.start()
+                result = subprocess.run([sys.executable, str(LAUNCHER), 'select-destination', 'fixture-work'],
+                                        env={**os.environ, 'OPENCLAW_VOICE_INSTANCE': 'default', 'XDG_RUNTIME_DIR': str(root), 'PATH': str(root)},
+                                        capture_output=True, text=True, timeout=5)
+                worker.join(timeout=2)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(requests, [{'command': 'select-destination', 'destinationId': 'fixture-work'}])
+
     def test_pairing_failure_stays_visible_without_sending_activation_or_starting_another_service(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); (root / 'openclaw-voice').mkdir()

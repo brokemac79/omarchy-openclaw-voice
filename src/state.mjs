@@ -41,6 +41,21 @@ export async function createState(directory) {
         inputMuted: controls.inputMuted === true, inputMuteRequested: controls.inputMuteRequested === true,
         speechQuiet: controls.speechQuiet === true, speechQuietRequested: controls.speechQuietRequested === true,
         workStatus: 'unknown', cancelAvailable: false,
+        reviewRequired: controls.reviewRequired === true,
+        destination: controls.destination ? {
+          id: String(controls.destination.id || '').slice(0, 32),
+          label: String(controls.destination.label || '').slice(0, 64),
+          agent: String(controls.destination.agent || '').slice(0, 64),
+          target: String(controls.destination.target || '').slice(0, 64),
+          state: ['ready', 'unavailable', 'stale'].includes(controls.destination.state) ? controls.destination.state : 'stale',
+          message: String(controls.destination.message || '').slice(0, 240),
+          canSwitch: controls.destination.canSwitch === true, switching: controls.destination.switching === true,
+        } : null,
+        destinationChoices: Array.isArray(controls.destinationChoices) ? controls.destinationChoices.slice(0, 8).map(choice => ({
+          id: String(choice.id || '').slice(0, 32), label: String(choice.label || '').slice(0, 64),
+          agent: String(choice.agent || '').slice(0, 64), target: String(choice.target || '').slice(0, 64),
+          state: ['ready', 'unavailable', 'stale'].includes(choice.state) ? choice.state : 'stale',
+        })) : [],
         actionCards: Array.isArray(controls.actionCards) ? controls.actionCards.slice(-ACTION_CARD_LIMIT)
           .filter(card => Number.isSafeInteger(card?.number) && card.number > 0)
           .map(card => ({ number: card.number, status: card.status === 'heard' ? 'heard' : 'unknown' })) : [],

@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { validateGateway } from './policy.mjs';
 import { resolveInstance } from './instance.mjs';
+import { destinationPresets } from './destinations.mjs';
 
 function credential(value, env, field, secrets) {
   if (value === undefined || value === null || value === '') return undefined;
@@ -72,6 +73,8 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
     sdk: options.gatewaySdk || join(home, '.local/share/openclaw-node/node_modules/openclaw/dist/plugin-sdk/gateway-runtime.js'),
     python: options.python || '/usr/bin/python3',
     sessionKey: options.sessionKey || 'agent:main:main',
+    destinations: destinationPresets(options),
+    selectionPath: join(configHome, instance.basename, 'destination.json'),
     voice: options.voice || 'cove',
     // Stable PipeWire/PulseAudio device names, stored outside the checkout.
     inputDevice: options.inputDevice,

@@ -28,9 +28,14 @@ BarWidget {
     runControl("toggle")
   }
   function runControl(command) {
-    if (!configured || control.running || !["toggle", "mute", "quiet", "resume-speech", "stop", "dismiss-result"].includes(command)) return
+    if (!configured || control.running || !["toggle", "mute", "quiet", "resume-speech", "stop", "dismiss-result", "destinations"].includes(command)) return
     control.operation = command
+    control.destinationId = ""
     control.running = true
+  }
+  function selectDestination(id) {
+    if (!configured || control.running || !/^[a-z0-9][a-z0-9_-]{0,31}$/.test(id)) return
+    control.operation = "select-destination"; control.destinationId = id; control.running = true
   }
 
   // Owned by this bar entry: disabling it also removes its visual surfaces.
@@ -45,7 +50,8 @@ BarWidget {
   Process {
     id: control
     property string operation: "toggle"
-    command: [root.controlPath, operation]
+    property string destinationId: ""
+    command: operation === "select-destination" ? [root.controlPath, operation, destinationId] : [root.controlPath, operation]
   }
   property var controlsState: ({})
   property alias voiceControls: controlsView
@@ -57,6 +63,7 @@ BarWidget {
     current: root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt < 20 && root.status !== "stopped"
     busy: control.running
     onExecute: command => root.runControl(command)
+    onSelectDestination: id => root.selectDestination(id)
     WlrLayershell.namespace: root.voiceBasename + "-controls"
   }
 
@@ -111,17 +118,39 @@ BarWidget {
     onTriggered: state.reload()
   }
 
-  implicitWidth: button.implicitWidth
+  readonly property var destination: controlsState.destination || ({state:"stale", label:"Destination unknown"})
+  readonly property string destinationText: (destination.state === "ready" ? "" : destination.state === "unavailable" ? "Unavailable · " : "Stale · ")
+    + (destination.agent ? destination.agent + " · " : "")
+    + (destination.target && destination.target !== "Gateway-selected execution" && destination.target !== "Unverified execution context"
+       ? destination.target : destination.label || "Destination unknown")
+  implicitWidth: button.implicitWidth + 6 + destinationTextView.width
   implicitHeight: button.implicitHeight
+
+  Text {
+    id: destinationTextView
+    anchors.left: button.right
+    anchors.leftMargin: 6
+    anchors.verticalCenter: parent.verticalCenter
+    width: Math.min(160, implicitWidth)
+    text: root.destinationText
+    textFormat: Text.PlainText
+    elide: Text.ElideRight
+    color: button.foreground
+    font.pixelSize: 12
+  }
 
   BarIconButton {
     id: button
-    anchors.fill: parent
+    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+    width: implicitWidth
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
              || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
-    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop")) + " · Right-click for voice controls"
+    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + root.destinationText
+      + (root.destination.label ? " · " + root.destination.label : "")
+      + (root.destination.target ? " · " + root.destination.target : "") + " — "
+      + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop")) + " · Right-click for voice controls"
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
     Accessible.description: button.tooltipText
@@ -140,13 +169,13 @@ BarWidget {
 
       // Keep the assistant's identity visible; only the small status dot changes.
       Rectangle {
-        visible: button.active || root.status === "error" || !root.configured
+        visible: button.active || root.status === "error" || !root.configured || root.destination.state !== "ready"
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         width: Math.max(5, Math.round(parent.width * 0.28))
         height: width
         radius: width / 2
-        color: root.status === "error" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping" || !root.configured ? "#ffb454"
+        color: root.status === "error" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping" || !root.configured || root.destination.state !== "ready" ? "#ffb454"
              : root.status === "standby" ? "#82aaff" : "#5de4c7"
         border.width: 1
         border.color: button.foreground
