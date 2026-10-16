@@ -27,6 +27,8 @@ speech Quiet and End voice. It uses the Omarchy theme and keeps unsupported
 request cancellation visibly unavailable.
 The bar and status panel also add preparation/ready feedback and locally defined
 recovery guidance; startup diagnostics remain outside the conversation surfaces.
+`ActionCards.qml` adds separate, bounded transcription/action observations and
+explicit unknown outcomes. The controls can scroll to retain access on small screens.
 
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision

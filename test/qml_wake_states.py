@@ -19,7 +19,7 @@ try:
         for module in ('Commons', 'Ui', 'services'):
             (root / module).symlink_to(Path('/usr/share/omarchy/shell') / module, target_is_directory=True)
         (root / 'plugin').mkdir()
-        for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
+        for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'ActionCards.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
             shutil.copyfile(source / filename, root / 'plugin' / filename)
         runtime.mkdir(mode=0o700)
         (runtime / 'state.json').write_text(json.dumps({'status': 'idle', 'text': 'Microphone off', 'updated': 1}))

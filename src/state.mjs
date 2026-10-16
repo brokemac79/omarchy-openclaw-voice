@@ -2,6 +2,7 @@ import { mkdir, chmod, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { level } from './policy.mjs';
 import { TRANSCRIPT_LIMIT } from './transcript.mjs';
+import { ACTION_CARD_LIMIT } from './action-progress.mjs';
 
 export async function createState(directory) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -40,6 +41,11 @@ export async function createState(directory) {
         inputMuted: controls.inputMuted === true, inputMuteRequested: controls.inputMuteRequested === true,
         speechQuiet: controls.speechQuiet === true, speechQuietRequested: controls.speechQuietRequested === true,
         workStatus: 'unknown', cancelAvailable: false,
+        actionCards: Array.isArray(controls.actionCards) ? controls.actionCards.slice(-ACTION_CARD_LIMIT)
+          .filter(card => Number.isSafeInteger(card?.number) && card.number > 0)
+          .map(card => ({ number: card.number, status: card.status === 'heard' ? 'heard' : 'unknown' })) : [],
+        earlierUnknown: Number.isSafeInteger(controls.earlierUnknown) && controls.earlierUnknown > 0 ? controls.earlierUnknown : 0,
+        additionalUnknown: controls.additionalUnknown === true,
         startupStage: typeof controls.startupStage === 'string' ? controls.startupStage.slice(0, 40) : null,
         errorCode: typeof controls.errorCode === 'string' ? controls.errorCode.slice(0, 40) : null,
         recoveryAction: String(controls.recoveryAction || '').slice(0, 240),

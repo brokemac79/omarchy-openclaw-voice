@@ -57,3 +57,8 @@ Startup regressions in `test/readiness.test.mjs` cover actual milestone ordering
 sanitized failures and metric limits. The native audio proof checks first-frame
 capture readiness; the Omarchy wake/state fixture also checks Preparing voice
 and Ready/Input muted presentation. Keep diagnostic fixtures synthetic.
+
+For action observations, run `python3 test/qml_action_cards.py` in the Omarchy
+graphical session. It uses synthetic Talk events, the real owner/state writer
+and actual QML components. Keep response events separate from execution evidence;
+see [the missing result contract](docs/ACTION-PROGRESS.md).

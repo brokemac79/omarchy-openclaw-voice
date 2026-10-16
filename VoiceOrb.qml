@@ -61,6 +61,9 @@ Item {
   property string recoveryAction: ""
   property string userWords: ""
   property string replyWords: ""
+  property var actionCards: []
+  property int earlierUnknown: 0
+  property bool additionalUnknown: false
   // Loudness 0..1 of each side of the conversation, straight off the daemon.
   property real youLevel: 0
   property real omaLevel: 0
@@ -87,7 +90,7 @@ Item {
   readonly property bool orbVisible: showOrb && awake
   readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
   readonly property string statusText: ({
-    listening: label.startsWith("Microphone muted") ? "Ready · Input muted" : label.startsWith("Talk ready") ? "Ready · Listening" : "Listening", thinking: "Thinking", acting: "Working",
+    listening: label.startsWith("Microphone muted") ? "Ready · Input muted" : label.startsWith("Talk ready") ? "Ready · Listening" : "Listening", thinking: "Thinking", acting: "Responding",
     confirm: "Confirmation needed", error: "Voice unavailable",
     standby: "Standby · Local microphone", preparing: "Preparing voice · Please wait", connecting: "Connecting · Wait for Talk", stopping: "Stopping · Releasing microphone"
   })[status] || label
@@ -157,12 +160,16 @@ Item {
         root.recoveryAction = parsed.recoveryAction || ""
         root.userWords = typeof parsed.user === "string" ? parsed.user : ""
         root.replyWords = typeof parsed.assistant === "string" ? parsed.assistant : ""
+        root.actionCards = Array.isArray(parsed.actionCards) ? parsed.actionCards.slice(-4) : []
+        root.earlierUnknown = Number(parsed.earlierUnknown) || 0
+        root.additionalUnknown = parsed.additionalUnknown === true
         root.updatedAt = Number(parsed.updated) || 0
       } catch (e) {
         root.status = "error"
         root.label = ""
         root.recoveryAction = ""
         root.userWords = root.replyWords = ""
+        root.actionCards = []; root.earlierUnknown = 0; root.additionalUnknown = false
         root.updatedAt = 0
       }
     }
@@ -171,6 +178,7 @@ Item {
       root.label = ""
       root.recoveryAction = ""
       root.userWords = root.replyWords = ""
+      root.actionCards = []; root.earlierUnknown = 0; root.additionalUnknown = false
       root.updatedAt = 0
     }
   }
@@ -302,6 +310,12 @@ Item {
         width: parent.width
         spacing: 10
         visible: root.conversationVisible
+        ActionCards {
+          width: parent.width
+          cards: root.actionCards.slice(-1)
+          earlierUnknown: root.earlierUnknown + Math.max(0, root.actionCards.length - 1)
+          additionalUnknown: root.additionalUnknown
+        }
         TranscriptBubble {
           width: parent.width
           speaker: "You"

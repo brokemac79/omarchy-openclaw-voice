@@ -11,7 +11,7 @@ Use the same configured instance wrapper for all commands.
 | Resume speech | `openclaw-voice resume-speech` | Makes subsequent incoming speech audible; discarded quiet audio is not replayed. |
 | Cancel request | `openclaw-voice cancel-request` | Currently unavailable for this native connection; returns an explicit unavailable outcome without sending a broad abort. |
 | End voice | `openclaw-voice end-voice` (or `stop`) | Releases local capture/playback and closes the selected voice session. Submitted host work may continue. |
-| Dismiss text | `openclaw-voice dismiss-result` | Clears the retained text excerpt without changing audio or work state. |
+| Dismiss results | `openclaw-voice dismiss-result` | Clears retained text and action observations without changing audio or work state. |
 
 Quiet is an idempotent output command, separate from the input-mute toggle.
 Playback can have a short device-buffer tail. It stays quiet across later provider
@@ -30,7 +30,7 @@ Text deltas and final text continue while speech is quiet. The latest received
 final assistant text is retained as a bounded, plain-text excerpt in the private
 runtime state after End voice or audio delivery failure. Open Voice controls to
 read it. This is received text, not proof that an action completed. It is cleared
-by Dismiss text, the next explicit call or companion shutdown; no history or
+by Dismiss results, the next explicit call or companion shutdown; no history or
 recording is added. Text that never reached the companion cannot be recovered
 here. The Gateway's own fallback text delivery remains untouched.
 
