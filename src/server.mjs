@@ -9,6 +9,7 @@ import { EngineOwner } from './engine-owner.mjs';
 import { launchWakeDetector } from './wake-detector.mjs';
 import { listenControl } from './control.mjs';
 import { MODEL } from './policy.mjs';
+import { VoiceError, failureDetails, gatewayFailure } from './voice-errors.mjs';
 
 const config = await loadConfig();
 const syntheticSilence = process.env.OPENCLAW_VOICE_TEST_SILENCE === '1';
@@ -24,17 +25,21 @@ const status = () => ({ connected, requested: owner.requested, active: owner.act
   wakeModes: ['conversation'], singleRequestQualified: false, wakeToReadyMs: owner.wakeToReadyMs,
   muted: owner.muteConfirmed, muteRequested: owner.muted, engineStarting: owner.engineStarting,
   syntheticSilence, engine: 'gstreamer', model: MODEL, instance: config.instance.name,
-  gatewayConnection: connection.get(), gatewaySdk, ...native.get() });
+  gatewayConnection: connection.get(), gatewaySdk, diagnostics: owner.readiness.snapshot(), ...native.get() });
 // Acquire control before updating the orb, so a second daemon cannot reset it.
-const control = await listenControl(runtime, async command => {
+const control = await listenControl(runtime, async (command, invocation = {}) => {
   if (!owner || shuttingDown) throw new Error('Voice is not ready.');
   switch (command) {
     case 'status': return status();
-    case 'preflight': return session.preflight();
+    case 'diagnostics': return { ...owner.readiness.snapshot(), ready: owner.active,
+      gatewayConnected: connected, errorCode: owner.failure?.code ?? null, startupStage: owner.startupStage };
+    case 'preflight':
+      try { return { ready: true, ...await session.preflight() }; }
+      catch (error) { return { ready: false, failure: failureDetails(error) }; }
     case 'toggle':
       if (owner.requested) await owner.stop();
-      else if (!connected) throw new Error('Gateway unavailable.');
-      else void owner.start();
+      else if (!connected) await owner.fail(new VoiceError('gateway_unavailable'));
+      else void owner.start(invocation);
       return status();
     case 'stop': await owner.stop(); return status();
     case 'quiet': owner.quiet(true); return status();
@@ -57,17 +62,21 @@ const client = new GatewayClient({
   clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.4.1', mode: 'ui',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
-  onHelloOk: hello => { connection.accept(hello); connected = true; owner.render(); },
-  onConnectError: () => { connection.clear(); connected = false; if (!shuttingDown) void owner.stop('Gateway connection unavailable.'); },
+  onHelloOk: hello => { connection.accept(hello); connected = true; owner.setGatewayConnected(true); },
+  onConnectError: error => {
+    connection.clear(); connected = false; owner.setGatewayConnected(false);
+    if (!shuttingDown) void owner.fail(gatewayFailure(error));
+  },
   onClose: () => {
     connection.clear(); connected = false;
-    if (!shuttingDown) void owner.stop(owner.requested ? 'Gateway disconnected. Microphone off.' : undefined);
+    owner.setGatewayConnected(false);
+    if (!shuttingDown && (owner.requested || owner.standby || !owner.failure)) void owner.fail(new VoiceError('gateway_disconnected'));
   },
   onEvent: event => {
     if (event.event !== 'talk.event' || !session.grant || event.payload?.voiceSessionId !== session.grant.voiceSessionId) return;
     const talk = event.payload.talkEvent;
     if (!talk) return;
-    if (talk.type === 'session.error') void owner.stop('Voice session ended with an error.');
+    if (talk.type === 'session.error') void owner.fail(new VoiceError('provider_session_error'));
     else if (talk.type === 'session.closed') void owner.stop();
     else owner.talk(talk);
   },
@@ -83,6 +92,7 @@ owner = new EngineOwner({ session, native,
   launchWake: !syntheticSilence && config.wake?.enabled === true
     ? callbacks => launchWakeDetector(config, callbacks) : undefined,
 });
+owner.setGatewayConnected(false);
 const healthTimer = setInterval(() => owner.checkHealth(), 1000);
 healthTimer.unref();
 async function shutdown(code = 0) {

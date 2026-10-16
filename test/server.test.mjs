@@ -41,7 +41,7 @@ test('real servers isolate controls and clear hello metadata without starting au
           const event=await readFile(process.env.FAKE_EVENT,'utf8'); if(event===last)return;
           const data=JSON.parse(event); last=event;
           if(data.type==='close')this.opts.onClose();
-          else if(data.type==='error')this.opts.onConnectError(Error('synthetic-secret'));
+          else if(data.type==='error')this.opts.onConnectError(Object.assign(Error('synthetic-secret'),{details:{code:data.code}}));
           else this.opts.onHelloOk(data);
           } finally { reading=false; }
         },20); }
@@ -92,6 +92,10 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
     const cancellation = await request(sockets[1], 'cancel-request');
     assert.equal(cancellation.cancellation.outcome, 'unavailable');
     assert.equal(cancellation.workStatus, 'unknown');
+    const diagnostics = await request(sockets[1], 'diagnostics');
+    assert.equal(diagnostics.ready, false); assert.equal(diagnostics.gatewayConnected, true);
+    assert.equal(diagnostics.agentWorkMs, null);
+    assert.ok(!/synthetic-secret|assistant|gatewayConnection|test-build|voiceSessionId/.test(JSON.stringify(diagnostics)));
     await assert.rejects(readFile(detectorReceipt), { code: 'ENOENT' });
     assert.equal((await request(sockets[1], 'standby-once')).ok, false);
     assert.equal((await request(sockets[0], 'standby-conversation')).ok, false);
@@ -105,13 +109,15 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
     assert.equal((await request(sockets[1])).wakeMode, 'off');
     for (const type of ['close', 'error']) {
       await request(sockets[1], 'standby-conversation'); await until(sockets[1], state => state.standby);
-      await publishEvent(events[1], { type });
+      await publishEvent(events[1], { type, code: type === 'error' ? 'PAIRING_REQUIRED' : undefined });
       const closed = await until(sockets[1], state => !state.connected);
       assert.equal(closed.gatewayConnection, null);
       assert.equal(closed.standby, false); assert.equal(closed.wakeMode, 'off');
+      assert.equal(closed.errorCode, type === 'error' ? 'pairing_required' : 'gateway_disconnected');
+      assert.ok(!JSON.stringify(closed.diagnostics).includes('synthetic-secret'));
       assert.equal((await request(sockets[0])).connected, true);
       await publishEvent(events[1], { auth: { method: 'token' }, server: { connId: type } });
-      const next = await until(sockets[1], state => state.connected);
+      const next = await until(sockets[1], state => state.connected && state.errorCode === null);
       assert.equal(next.gatewayConnection.authMethod, 'token');
       assert.equal(next.gatewayConnection.connId, type);
       assert.equal(next.standby, false); assert.equal(next.wakeMode, 'off');

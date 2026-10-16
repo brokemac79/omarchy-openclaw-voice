@@ -64,7 +64,7 @@ BarWidget {
   property string label: ""
   property real updatedAt: 0
   readonly property string activationState: updatedAt === 0 || status === "stopped" ? "Unknown"
-    : status === "standby" ? "Standby" : status === "connecting" ? "Connecting" : status === "stopping" ? "Stopping"
+    : status === "standby" ? "Standby" : status === "preparing" ? "Preparing voice" : status === "connecting" ? "Connecting" : status === "stopping" ? "Stopping"
     : ["listening", "thinking", "acting", "confirm"].includes(status) ? "Talk"
     : status === "idle" ? "Off" : "Unavailable"
   Timer {
@@ -120,7 +120,7 @@ BarWidget {
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-             || root.status === "standby" || root.status === "connecting" || root.status === "stopping"
+             || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
     tooltipText: "OpenClaw Voice — " + root.activationState + " — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop")) + " · Right-click for voice controls"
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
@@ -146,7 +146,7 @@ BarWidget {
         width: Math.max(5, Math.round(parent.width * 0.28))
         height: width
         radius: width / 2
-        color: root.status === "error" || root.status === "connecting" || root.status === "stopping" || !root.configured ? "#ffb454"
+        color: root.status === "error" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping" || !root.configured ? "#ffb454"
              : root.status === "standby" ? "#82aaff" : "#5de4c7"
         border.width: 1
         border.color: button.foreground

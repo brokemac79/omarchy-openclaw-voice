@@ -89,8 +89,9 @@ openWakeWord's unused TFLite dependency was not installed.
 
 These are generated-signal runtime checks, not measured standby battery cost,
 wake-to-ready latency or wake accuracy. `wakeToReadyMs` in the private status
-response measures detection to both transport and provider readiness using a
-monotonic clock. Physical measurements from the later Surface trial are recorded below.
+response now measures detection to native transport, microphone-frame and
+provider readiness using a monotonic clock. Physical measurements from the
+Surface trial below used the earlier transport/provider gate in candidate `a791e2d`.
 
 The three ONNX assets came from upstream release `v0.5.1`, outside this checkout:
 

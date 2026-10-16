@@ -51,6 +51,13 @@ PanelWindow {
         textFormat: Text.PlainText; wrapMode: Text.WordWrap
         color: Color.notifications.text; font.pixelSize: 13
       }
+      Text {
+        width: parent.width
+        visible: root.current && !!root.voiceState.recoveryAction
+        text: root.voiceState.recoveryAction || ""
+        textFormat: Text.PlainText; wrapMode: Text.WordWrap
+        color: Color.notifications.text; font.pixelSize: 12
+      }
       Flow {
         width: parent.width
         spacing: 8

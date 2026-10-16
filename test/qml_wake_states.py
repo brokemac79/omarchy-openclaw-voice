@@ -35,7 +35,7 @@ ShellRoot {
   Voice.VoiceIndicator { id: indicator; voiceInstance: NAME; voiceControl: CONTROL }
   property var cases: [
     ["idle", "Off", false], ["standby", "Standby", true],
-    ["connecting", "Connecting", true], ["listening", "Talk", true],
+    ["preparing", "Preparing voice", true], ["connecting", "Connecting", true], ["listening", "Talk", true],
     ["thinking", "Talk", true], ["acting", "Talk", true], ["stopping", "Stopping", true]
   ]
   property int index: 0
@@ -48,11 +48,11 @@ ShellRoot {
       indicator.label = c[0] === "standby" ? "Standby: local microphone · “Hey Open Claw” · open conversation" : "Synthetic state";
       const panel = indicator.conversation;
       panel.updatedAt = Date.now() / 1000; panel.nowSeconds = panel.updatedAt;
-      panel.status = c[0]; panel.label = indicator.label;
+      panel.status = c[0]; panel.label = c[0] === "listening" ? "Talk ready — Listening" : indicator.label;
       if (indicator.activationState !== c[1] || panel.awake !== c[2]) {
         console.log("FAIL state " + c[0]); failures++;
       }
-      if (["standby", "connecting", "stopping"].includes(c[0]) && panel.conversationVisible) {
+      if (["standby", "preparing", "connecting", "stopping"].includes(c[0]) && panel.conversationVisible) {
         console.log("FAIL stale bubbles in " + c[0]); failures++;
       }
       if (c[0] === "standby" && panel.statusText !== "Standby · Local microphone") {
@@ -60,6 +60,16 @@ ShellRoot {
       }
       if (c[0] === "connecting" && !panel.statusText.includes("Wait for Talk")) {
         console.log("FAIL readiness label"); failures++;
+      }
+      if (c[0] === "preparing" && !panel.statusText.startsWith("Preparing voice")) {
+        console.log("FAIL preparation label"); failures++;
+      }
+      if (c[0] === "listening" && panel.statusText !== "Ready · Listening") {
+        console.log("FAIL visual ready cue"); failures++;
+      }
+      if (c[0] === "listening") {
+        panel.label = "Microphone muted";
+        if (panel.statusText !== "Ready · Input muted") { console.log("FAIL muted readiness cue"); failures++; }
       }
       index++;
     } else {

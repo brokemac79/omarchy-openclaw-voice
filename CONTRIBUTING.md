@@ -52,3 +52,8 @@ playback samples through Quiet/resume and independent input mute. Run
 `python3 test/qml_controls.py` in the Omarchy graphical session with synthetic
 state and a fake launcher. It opens no physical audio device or live provider;
 see [the contract limits](docs/INTERRUPTIONS.md).
+
+Startup regressions in `test/readiness.test.mjs` cover actual milestone ordering,
+sanitized failures and metric limits. The native audio proof checks first-frame
+capture readiness; the Omarchy wake/state fixture also checks Preparing voice
+and Ready/Input muted presentation. Keep diagnostic fixtures synthetic.

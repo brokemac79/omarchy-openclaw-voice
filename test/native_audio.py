@@ -26,7 +26,7 @@ def prove_media():
     )
     rtc = peer.get_by_name('rtc')
     evidence = {'send': False, 'receive': False, 'loss_concealed': False,
-                'quiet': False, 'resumed': False, 'muted': False}
+                'quiet': False, 'resumed': False, 'muted': False, 'capture_ready': False}
     failures = []
     phase = ['audio', 0.0]
     latest_received = [-100.0]
@@ -76,6 +76,8 @@ def prove_media():
             rtc.emit('set-remote-description', offer, Gst.Promise.new_with_change_func(remote_set, None, None))
         elif event == 'levels':
             latest_output[0] = data['output']
+            if data.get('captureReady') is True:
+                evidence['capture_ready'] = True
             if data['active'] and data['output'] > 0.02:
                 evidence['receive'] = True
 
@@ -122,6 +124,7 @@ def prove_media():
     bus = peer.get_bus(); bus.add_signal_watch(); bus.connect('message', message)
     peer.set_state(Gst.State.PLAYING)
     worker.start({'muted': False})
+    assert not worker.capture_ready, 'Capture cannot be ready before the first microphone frame.'
     playback = worker.pipeline.get_by_name('playback')
     playback.set_property('signal-handoffs', True)
     def played(_sink, buffer, _pad):

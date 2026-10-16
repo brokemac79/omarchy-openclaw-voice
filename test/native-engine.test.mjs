@@ -48,6 +48,26 @@ test('output Quiet survives reservation and never sends input mute, close or can
   await engine.close(); engine.quiet(false);
   assert.equal(f.commands.length, 4);
 });
+
+test('real preparation boundaries are reported once and a failed offer is sanitized without resubmission', async () => {
+  const f = fixture(), stages = [], failures = []; let offers = 0;
+  f.session.create = async progress => {
+    progress('voice-checks-started'); progress('voice-checks-passed');
+    progress('reservation-started'); progress('provider-reserved');
+  };
+  const engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true,
+    onProgress: stage => stages.push(stage), onFailure: failure => failures.push(failure),
+    exchange: async () => { offers++; throw new Error('synthetic-secret private endpoint'); },
+  });
+  await engine.start();
+  const offer = JSON.stringify({ event: 'offer', sdp: 'v=0\r\nm=audio test' }) + '\n';
+  f.child.stdout.write(offer); await tick(); f.child.stdout.write(offer); await tick();
+  assert.equal(offers, 1); assert.equal(failures.length, 1);
+  assert.equal(failures[0].code, 'offer_failed'); assert.ok(!String(failures[0]).includes('synthetic-secret'));
+  assert.deepEqual(stages, ['native-worker-ready', 'voice-checks-started', 'voice-checks-passed',
+    'reservation-started', 'provider-reserved', 'audio-requested', 'offer-started']);
+  await engine.close();
+});
 test('late SDP response after stop cannot reach a replacement worker', async () => {
   const f = fixture(); let finish, signal;
   const engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true,

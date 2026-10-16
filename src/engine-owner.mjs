@@ -1,8 +1,10 @@
 import { Transcript } from './transcript.mjs';
+import { Readiness, monotonicNow } from './readiness.mjs';
+import { VoiceError, failureDetails } from './voice-errors.mjs';
 
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
-  constructor({ session, launch, launchWake, native, wakePhrase, now = () => performance.now(), singleRequestBoundary = false }) {
+  constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false }) {
     Object.assign(this, { session, launch, launchWake, native, wakePhrase, now });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
@@ -19,6 +21,8 @@ export class EngineOwner {
     this.sessionReady = this.transportActive = false;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
+    this.readiness = new Readiness(now); this.failure = null; this.gatewayConnected = true;
+    this.startupStage = null; this.captureReady = false;
   }
   releaseDetector() {
     const detector = this.detector; this.detector = null;
@@ -36,6 +40,7 @@ export class EngineOwner {
     if (mode === 'one-request' && !this.singleRequestBoundary) throw new Error('One-request completion is not qualified for this Talk route.');
     if (this.requested || this.standby || this.standbyStarting) throw new Error('Stop voice before arming standby.');
     if (!this.launchWake || this.mediaFault) throw new Error('Local wake detector is unavailable.');
+    this.failure = null;
     this.wakeMode = mode; this.standbyStarting = true;
     this.phase = 'connecting'; this.caption = 'Starting local wake detector'; this.render();
     const epoch = ++this.epoch, previous = this.startup;
@@ -51,7 +56,7 @@ export class EngineOwner {
               this.wakeDetectedAt = this.now(); void this.start({ wake: true });
             }
           },
-          onFailure: () => { if (epoch === this.epoch) void this.stop('Local wake detector failed. Microphone off.'); },
+          onFailure: () => { if (epoch === this.epoch) void this.fail(new VoiceError('wake_unavailable')); },
         });
         this.wakePending = Promise.resolve(acquisition).then(candidate => {
           if (epoch !== this.epoch) return candidate.close();
@@ -62,17 +67,18 @@ export class EngineOwner {
         const phrase = this.wakePhrase ? ` · “${this.wakePhrase}”` : '';
         this.phase = 'standby'; this.caption = `Standby: local microphone${phrase} · ${mode === 'one-request' ? 'one request' : 'open conversation'}`;
         this.render();
-      } catch { if (epoch === this.epoch) await this.stop('Local wake unavailable. Check model and dependencies.'); }
+      } catch { if (epoch === this.epoch) await this.fail(new VoiceError('wake_unavailable')); }
     })();
     this.startup = work.catch(() => {});
     return work;
   }
-  start({ wake = false } = {}) {
+  start({ wake = false, invokedAtMs } = {}) {
     if (this.requested) return this.startup;
     if (!wake) this.wakeMode = 'off';
     if (!wake) this.wakeDetectedAt = null;
     this.wakeToReadyMs = null;
-    this.sessionReady = this.transportActive = false;
+    this.sessionReady = this.transportActive = this.captureReady = false;
+    this.readiness.begin(invokedAtMs); this.failure = null; this.startupStage = 'native-worker';
     this.releaseDetector(); this.turnEndedAt = null;
     this.requested = true; this.muted = this.muteConfirmed = false;
     this.outputMuted = this.outputMuteConfirmed = false;
@@ -90,15 +96,16 @@ export class EngineOwner {
         if (epoch !== this.epoch) return;
         if (this.mediaFault) throw new Error('Audio release failed.');
         const candidate = await this.launch({
-          onFailure: message => { if (epoch === this.epoch) void this.stop(message); },
+          onFailure: error => { if (epoch === this.epoch) void this.fail(error, 'audio_setup_failed'); },
           onTelemetry: data => { if (epoch === this.epoch) this.telemetry(data); },
+          onProgress: stage => { if (epoch === this.epoch && this.requested) this.progress(stage); },
         });
         if (epoch !== this.epoch) { await candidate.close(); return; }
         this.engine = candidate; this.lastSeen = this.startedAt = this.now();
         await candidate.start({ muted: this.muted, outputMuted: this.outputMuted });
         if (epoch === this.epoch) this.lastSeen = this.startedAt = this.now();
-      } catch {
-        if (epoch === this.epoch) await this.stop('Could not start voice. Check OAuth, gateway and audio devices.');
+      } catch (error) {
+        if (epoch === this.epoch) await this.fail(error);
       } finally { if (epoch === this.epoch) this.engineStarting = false; }
     })();
     this.startup = work.catch(() => {});
@@ -109,7 +116,8 @@ export class EngineOwner {
     this.wakeMode = 'off'; this.turnEndedAt = null; this.releaseDetector();
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.outputMuted = this.outputMuteConfirmed = false;
-    this.sessionReady = this.transportActive = false;
+    this.sessionReady = this.transportActive = this.captureReady = false;
+    this.readiness.mark('stopped'); this.startupStage = null;
     this.native.levels(0, 0);
     this.transcript.clear();
     this.phase = 'stopping'; this.caption = 'Releasing microphone'; this.render();
@@ -120,10 +128,35 @@ export class EngineOwner {
     await this.mediaCleanup;
     if (epoch === this.epoch) {
       this.phase = message || this.mediaFault ? 'error' : 'idle';
+      if (this.mediaFault) this.failure = failureDetails(new VoiceError('release_unconfirmed'));
       this.caption = this.mediaFault ? 'Audio release unconfirmed. Stop the companion service.' : message || 'Microphone off';
       this.render();
     }
     await this.cleanup;
+  }
+  async fail(error, fallback) {
+    this.failure = failureDetails(error, fallback);
+    this.readiness.mark('failed');
+    await this.stop(this.failure.message);
+  }
+  async setGatewayConnected(value) {
+    this.gatewayConnected = value === true;
+    if (value && !this.requested && (this.failure?.code.startsWith('gateway_') || ['pairing_required', 'pairing_failed'].includes(this.failure?.code))) {
+      const epoch = this.epoch;
+      await this.mediaCleanup;
+      if (epoch !== this.epoch || !this.gatewayConnected || this.mediaFault) return;
+      this.failure = null; this.phase = 'idle'; this.caption = 'Microphone off';
+    }
+    this.render();
+  }
+  progress(stage) {
+    this.readiness.mark(stage);
+    const stages = { 'native-worker-ready': 'voice-checks', 'voice-checks-started': 'voice-checks',
+      'voice-checks-passed': 'provider-session', 'reservation-started': 'provider-session',
+      'provider-reserved': 'audio-setup', 'audio-requested': 'audio-setup',
+      'offer-started': 'connection-exchange', 'offer-answered': 'talk-connection' };
+    if (Object.hasOwn(stages, stage)) this.startupStage = stages[stage];
+    this.render();
   }
   mute() {
     // In standby, mute means fully disarm and release input. It cannot wake.
@@ -149,11 +182,17 @@ export class EngineOwner {
     return { callRequested: this.requested, inputMuted: this.muteConfirmed,
       inputMuteRequested: this.muted, speechQuiet: this.outputMuteConfirmed,
       speechQuietRequested: this.outputMuted, workStatus: 'unknown',
-      cancelAvailable: false, lastResult: this.lastResult };
+      cancelAvailable: false, lastResult: this.lastResult,
+      startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
+      recoveryAction: this.failure?.recovery ?? '' };
   }
   telemetry(data) {
     this.lastSeen = this.now();
     this.transportActive = data.active === true;
+    this.captureReady = data.captureReady === true;
+    if (!this.active && (this.transportActive || this.captureReady)) this.startupStage = 'talk-connection';
+    if (this.transportActive) this.readiness.mark('transport-ready');
+    if (this.captureReady) this.readiness.mark('capture-ready');
     this.updateReadiness();
     this.muteConfirmed = data.muted === true;
     this.outputMuteConfirmed = data.outputMuted === true;
@@ -163,7 +202,8 @@ export class EngineOwner {
   }
   talk(data) {
     if (!this.requested) return;
-    if (data.type === 'session.ready') { this.sessionReady = true; this.updateReadiness(); }
+    if (data.type === 'session.ready') { this.sessionReady = true; this.readiness.mark('talk-ready'); this.updateReadiness(); }
+    this.readiness.talk(data);
     if (data.type === 'turn.ended' && this.wakeMode === 'one-request' && this.turnEndedAt === null) {
       this.turnEndedAt = this.lastOutput = this.now();
       this.muted = true; this.engine?.mute(true);
@@ -179,9 +219,10 @@ export class EngineOwner {
     this.render();
   }
   updateReadiness() {
-    const active = this.transportActive && this.sessionReady;
+    const active = this.transportActive && this.captureReady && this.sessionReady;
     if (active && !this.active) { this.phase = 'listening'; this.caption = 'Talk ready — Listening'; }
     this.active = active;
+    if (active) { this.readiness.mark('ready'); this.startupStage = null; }
     if (active && this.wakeDetectedAt !== null && this.wakeToReadyMs === null) {
       this.wakeToReadyMs = Math.max(0, Math.round(this.now() - this.wakeDetectedAt));
     }
@@ -190,8 +231,14 @@ export class EngineOwner {
     const mode = this.requested && this.wakeMode !== 'off'
       ? ` · ${this.wakeMode === 'one-request' ? 'returns to standby' : 'open conversation'}` : '';
     const connecting = this.requested && !this.active;
-    this.native.set(connecting ? 'connecting' : this.phase,
-      (this.muteConfirmed ? 'Microphone muted' : connecting ? 'Connecting to OpenClaw — wait for Talk' : this.caption) + mode,
+    const waitingGateway = !this.gatewayConnected && !this.requested && !this.failure && !this.standby && !this.standbyStarting;
+    const preparing = connecting && ['native-worker', 'voice-checks', 'provider-session', 'audio-setup'].includes(this.startupStage);
+    const startupText = ({ 'native-worker': 'Preparing local voice worker', 'voice-checks': 'Checking voice configuration',
+      'provider-session': 'Preparing voice session', 'audio-setup': 'Preparing microphone and playback',
+      'connection-exchange': 'Connecting voice transport', 'talk-connection': 'Waiting for microphone and Talk readiness' })[this.startupStage];
+    this.native.set(preparing ? 'preparing' : connecting || waitingGateway ? 'connecting' : this.phase,
+      (connecting ? startupText || 'Connecting to OpenClaw — wait for Talk' : waitingGateway ? 'Connecting to Gateway · Microphone off'
+        : this.muteConfirmed ? 'Microphone muted' : this.caption) + mode,
       this.transcript.get(), this.controls());
   }
   checkHealth() {
@@ -214,7 +261,7 @@ export class EngineOwner {
     const timedOut = this.engineStarting ? elapsed > 50000
       : this.now() - this.lastSeen > 10000 || (!this.active && elapsed > 45000);
     if (timedOut) {
-      void this.stop('Audio connection timed out. Microphone off.');
+      void this.fail(new VoiceError('audio_setup_timeout'));
     }
   }
 }
