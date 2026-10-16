@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose an improvement to the Omarchy OpenClaw Voice integration
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Please avoid private configuration, credentials, recordings and real transcripts. See VISION.md for project boundaries."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: "Describe the user need rather than only a proposed implementation."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: "Explain the Omarchy interaction and any alternative you considered."
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Privacy, permissions and verification
+      description: "Would this affect microphone lifecycle, gateway approvals, provider costs or stored content? What could be verified offline versus on a real Omarchy setup?"
