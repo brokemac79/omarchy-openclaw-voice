@@ -44,11 +44,15 @@ BarWidget {
   property string status: "stopped"
   property string label: ""
   property real updatedAt: 0
+  readonly property string activationState: updatedAt === 0 || status === "stopped" ? "Unknown"
+    : status === "standby" ? "Standby" : status === "connecting" ? "Connecting" : status === "stopping" ? "Stopping"
+    : ["listening", "thinking", "acting", "confirm"].includes(status) ? "Talk"
+    : status === "idle" ? "Off" : "Unavailable"
   Timer {
     interval: 5000; running: true; repeat: true
     onTriggered: {
       if (root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt > 20) {
-        root.status = "stopped"; root.label = "Microphone off"
+        root.status = "stopped"; root.label = "Audio state unknown — use Stop"
       }
     }
   }
@@ -94,7 +98,8 @@ BarWidget {
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-    tooltipText: "OpenClaw Voice — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : root.status))
+             || root.status === "standby" || root.status === "connecting" || root.status === "stopping"
+    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop"))
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
     Accessible.description: button.tooltipText
@@ -119,7 +124,8 @@ BarWidget {
         width: Math.max(5, Math.round(parent.width * 0.28))
         height: width
         radius: width / 2
-        color: root.status === "error" || !root.configured ? "#ffb454" : "#5de4c7"
+        color: root.status === "error" || root.status === "connecting" || root.status === "stopping" || !root.configured ? "#ffb454"
+             : root.status === "standby" ? "#82aaff" : "#5de4c7"
         border.width: 1
         border.color: button.foreground
       }

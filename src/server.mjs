@@ -6,6 +6,7 @@ import { createState } from './state.mjs';
 import { launchEngine } from './native-engine.mjs';
 import { VoiceSession } from './session.mjs';
 import { EngineOwner } from './engine-owner.mjs';
+import { launchWakeDetector } from './wake-detector.mjs';
 import { listenControl } from './control.mjs';
 import { MODEL } from './policy.mjs';
 
@@ -18,6 +19,9 @@ const { sdk: { GatewayClient, startGatewayClientWhenEventLoopReady }, binding: g
 const connection = createConnectionStatus();
 let connected = false, shuttingDown = false, owner, session, native;
 const status = () => ({ connected, requested: owner.requested, active: owner.active,
+  standby: owner.standby, standbyStarting: owner.standbyStarting, wakeMode: owner.wakeMode,
+  wakeEnabled: config.wake?.enabled === true && !syntheticSilence,
+  wakeModes: ['conversation'], singleRequestQualified: false, wakeToReadyMs: owner.wakeToReadyMs,
   muted: owner.muteConfirmed, muteRequested: owner.muted, engineStarting: owner.engineStarting,
   syntheticSilence, engine: 'gstreamer', model: MODEL, instance: config.instance.name,
   gatewayConnection: connection.get(), gatewaySdk, ...native.get() });
@@ -33,6 +37,11 @@ const control = await listenControl(runtime, async command => {
       else void owner.start();
       return status();
     case 'stop': await owner.stop(); return status();
+    case 'standby-once':
+    case 'standby-conversation':
+      if (!connected || syntheticSilence || config.wake?.enabled !== true) throw new Error('Wake unavailable.');
+      void owner.arm(command === 'standby-once' ? 'one-request' : 'conversation');
+      return status();
     case 'mute': owner.mute(); return status();
     default: throw new Error('Unknown operation.');
   }
@@ -44,7 +53,7 @@ const client = new GatewayClient({
   clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.4.1', mode: 'ui',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
-  onHelloOk: hello => { connection.accept(hello); connected = true; if (!owner.requested) native.set('idle', 'Microphone off'); },
+  onHelloOk: hello => { connection.accept(hello); connected = true; owner.render(); },
   onConnectError: () => { connection.clear(); connected = false; if (!shuttingDown) void owner.stop('Gateway connection unavailable.'); },
   onClose: () => {
     connection.clear(); connected = false;
@@ -65,7 +74,10 @@ const rpc = (method, params = {}) => {
 };
 session = new VoiceSession(rpc, config.sessionKey, config.voice);
 owner = new EngineOwner({ session, native,
+  wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,
   launch: callbacks => launchEngine(config, session, { ...callbacks, syntheticSilence }),
+  launchWake: !syntheticSilence && config.wake?.enabled === true
+    ? callbacks => launchWakeDetector(config, callbacks) : undefined,
 });
 const healthTimer = setInterval(() => owner.checkHealth(), 1000);
 healthTimer.unref();

@@ -76,5 +76,7 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
     // Stable PipeWire/PulseAudio device names, stored outside the checkout.
     inputDevice: options.inputDevice,
     outputDevice: options.outputDevice,
+    // Configuring models never arms input; only an explicit control command can.
+    wake: options.wake,
   };
 }

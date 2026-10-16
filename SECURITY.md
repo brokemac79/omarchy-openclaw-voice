@@ -24,6 +24,16 @@ audio. Captions are rendered as plain text. Current captions and levels are
 volatile runtime state; this app does not save audio or transcript history.
 The gateway and provider have separate data retention policies.
 
+Optional wake support is disabled by default. Explicitly arming Standby opens a
+local detector microphone; Standby is not microphone off. Its bounded frames
+remain local and are not recorded or sent to the Gateway/provider. Detection
+releases that input before a fresh ordinary Talk connection. Stop, errors and
+disconnect disarm it; reconnect and boot never arm it. The supported conversation
+mode does not return to Standby automatically; one-request return remains
+disabled pending a correlated completion contract. A wake is not authentication
+or approval. Model licences and runtime qualification are independent of the
+application licence; see [wake activation](docs/WAKE-WORD.md).
+
 OAuth checks cover configuration returned by the gateway, not hidden environment
 credentials or future provider behaviour. Existing reasoning fallbacks are
 not removed. Review those separately when controlling provider costs.
