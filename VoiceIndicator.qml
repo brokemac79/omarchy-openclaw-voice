@@ -56,6 +56,7 @@ BarWidget {
   FileView {
     id: state
     path: root.voiceRuntime ? root.voiceRuntime + "/state.json" : ""
+    printErrors: root.updatedAt > 0
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -67,12 +68,21 @@ BarWidget {
       } catch (e) {
         root.status = "error"
         root.label = ""
+        root.updatedAt = 0
       }
     }
     onLoadFailed: {
       root.status = "stopped"
       root.label = ""
+      root.updatedAt = 0
     }
+  }
+
+  // A reboot removes the runtime directory. A watch cannot attach until it exists.
+  Timer {
+    interval: 1000; repeat: true
+    running: root.voiceRuntime !== "" && root.updatedAt === 0
+    onTriggered: state.reload()
   }
 
   implicitWidth: button.implicitWidth

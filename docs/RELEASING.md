@@ -1,13 +1,14 @@
 # Release process
 
-Version `0.4.0` is the first GitHub preview release. Its tag preserves the
-consolidated source from `main`; it is not a marketplace listing or a stable
-compatibility guarantee. Repository visibility remains a separate owner
-decision. No marketplace request is created by this release.
+Version `0.4.0` was the first GitHub preview release. Version `0.4.1` repairs
+startup state recovery. Tags preserve the tested source from `main`; they are
+not a stable compatibility guarantee. The public repository is listed in the
+marketplace with manual companion setup. New source snapshots need their own
+marketplace verification.
 
 The permanent plugin ID is `community.openclaw-voice`. The root bar package
 owns its conversation/status children. The companion requires explicit setup.
-Package, manifest and client versions are `0.4.0`. Later releases must update
+Package, manifest and client versions are `0.4.1`. Later releases must update
 them together and use a new tag. Do not move a published release tag.
 
 ## Before publication

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.1 — 16 October 2026
+
+- Recover the bar state and conversation captions when the companion runtime
+  directory is created after shell startup or removed and recreated.
+- Retry unavailable state reads once per second without starting the companion
+  or requesting audio; suppress expected missing-file warnings until first load.
+- Add a synchronized real-QML regression for five startup/recovery scenarios.
+
+The old missing-directory failure and repaired behavior were exercised on
+Omarchy with synthetic state. Existing QML instance checks, 53 Node tests and
+15 Python tests pass. No automated physical audio or live provider was used.
+See [proof and limits](docs/COMPATIBILITY.md#v041-startup-recovery-tested-on-16-october-2026).
+
 ## 0.4.0 â€” 14 October 2026
 
 Initial preview release of the native Omarchy interface for OpenClaw.

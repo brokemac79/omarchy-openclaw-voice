@@ -143,6 +143,7 @@ Item {
   FileView {
     id: stateFile
     path: root.voiceRuntime ? root.voiceRuntime + "/state.json" : ""
+    printErrors: root.updatedAt > 0
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -166,6 +167,13 @@ Item {
       root.userWords = root.replyWords = ""
       root.updatedAt = 0
     }
+  }
+
+  // Recover when the companion creates its runtime directory after shell startup.
+  Timer {
+    interval: 1000; repeat: true
+    running: root.voiceRuntime !== "" && root.updatedAt === 0
+    onTriggered: stateFile.reload()
   }
 
   // Polled rather than watched. The level file is rewritten many times a second

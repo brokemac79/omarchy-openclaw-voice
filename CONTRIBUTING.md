@@ -35,3 +35,7 @@ On Linux with the audio dependencies installed, also run
 `python3 test/native_audio.py`. This offline check uses generated audio and fake
 sinks; it must never open physical input/output devices. Windows skips Unix
 socket and symlink cases, so Linux validation is required before release.
+
+For startup/state recovery, run `python3 test/qml_cold_start.py` in an Omarchy
+graphical session. It uses synthetic idle state and a fake control; it never
+starts a voice session or opens audio devices.

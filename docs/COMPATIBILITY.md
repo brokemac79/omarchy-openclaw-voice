@@ -4,6 +4,30 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
+## v0.4.1 startup recovery tested on 16 October 2026
+
+The bar and caption panel read the companion's runtime files. On Omarchy
+`4.0.4-1` with Quickshell `0.3.1-1`, the v0.4.0 watchers remained unattached
+when the parent runtime directory was absent at startup or removed and recreated.
+The UI could keep showing stopped while the companion was listening.
+
+Run `python3 test/qml_cold_start.py` inside the Omarchy graphical session. It
+loads the actual QML with synthetic idle state, synchronizes startup before
+creating files, uses a unique named runtime and a fake control that records any
+unexpected invocation. The unchanged v0.4.0 failed both missing-parent and
+recreated-parent cases. The repaired source passed all five cases: existing
+state, missing file, missing parent, recreated parent and still-absent state.
+No control command was invoked, and no physical audio device was opened.
+
+The repair retries state reads once per second only while no state timestamp
+is available. It also clears failed-read freshness and suppresses expected
+missing-file errors until the first load. Existing QML instance/control checks,
+53 Node regressions and 15 Python regressions passed on Linux with Node `26.8.1`.
+This is startup/state recovery proof, not a complete reboot, live speech or
+permission matrix. Earlier live and installer evidence below remains bounded
+to its stated version. A marketplace review of an older source snapshot does
+not certify this patch automatically.
+
 ## v0.4.0 isolated installation and recovery tested on 14 October 2026
 
 The exact attached v0.4.0 archive was exercised in a disposable Linux Crabbox VM,

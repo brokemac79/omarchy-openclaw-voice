@@ -1,12 +1,11 @@
 # Omarchy OpenClaw Voice
 
-**v0.4.0 â€” initial preview release.** The consolidated package has completed an
-upgrade and manual voice/bubble trial on an existing Omarchy desktop against an
-OpenClaw main build. Fresh companion installation, removal and restoration have
-also passed in an isolated Linux VM with real user systemd. Full graphical
-desktop lifecycle coverage remains incomplete; see
-[compatibility and limits](docs/COMPATIBILITY.md). Marketplace submission is a
-separate step.
+**v0.4.1 — startup recovery preview.** The bar and speech bubbles now recover
+when the voice runtime directory appears after shell startup, including after a
+reboot. Synthetic checks on Omarchy reproduce the old failure and verify the
+repair without microphone capture. Earlier voice and installation trials remain
+separate evidence; see [compatibility and limits](docs/COMPATIBILITY.md).
+The marketplace lists this plugin with manual companion setup.
 
 Talk to your OpenClaw agent through a **native Omarchy bar control and speech bubbles**.
 Click the **OpenClaw lobster-and-microphone icon** to
