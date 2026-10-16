@@ -1,5 +1,7 @@
 // Closed, local presentation vocabulary. Never display an upstream error message.
 const errors = {
+  destination_unavailable: ['Voice destination unavailable', 'Refresh destinations and check the configured agent, conversation and node before starting voice.'],
+  destination_switch_blocked: ['Cannot switch voice destination yet', 'End voice, review any unknown outcomes and dismiss results before selecting another destination.'],
   gateway_unavailable: ['Gateway unavailable', 'Check that your configured Gateway is running and reachable, then try again.'],
   gateway_disconnected: ['Gateway disconnected. Microphone off.', 'Reconnect the Gateway, then start voice again.'],
   pairing_required: ['Device pairing required', 'Approve this device in OpenClaw, then start voice again.'],

@@ -13,7 +13,10 @@ test('runtime state is private, bounds captions, and clears audio and caption on
       { lastResult: 'r'.repeat(4000), cancelAvailable: true, workStatus: 'completed', token: 'synthetic-secret',
         actionCards: [{ number: 1, status: 'heard', text: 'synthetic-secret' },
           { number: 2, status: 'completed', exitCode: 0 }, { number: -1, status: 'completed' }],
-        earlierUnknown: -1, additionalUnknown: true }); state.levels(0.2, 2);
+        earlierUnknown: -1, additionalUnknown: true,
+        destination: { id: 'work', label: 'Synthetic context', agent: 'Synthetic agent', target: 'Synthetic node',
+          state: 'ready', canSwitch: true, sessionKey: 'synthetic-secret', nodeId: 'synthetic-secret' },
+        destinationChoices: [{ id: 'work', label: 'Synthetic context', state: 'ready', token: 'synthetic-secret' }] }); state.levels(0.2, 2);
     await new Promise(r => setTimeout(r, 180));
     assert.equal(JSON.parse(await readFile(join(directory, 'state.json'))).text.length, 240);
     assert.equal(state.get().user.length, 1800);
@@ -22,6 +25,8 @@ test('runtime state is private, bounds captions, and clears audio and caption on
     assert.equal(state.get().workStatus, 'unknown'); assert.equal(state.get().cancelAvailable, false);
     assert.deepEqual(state.get().actionCards, [{ number: 1, status: 'heard' }, { number: 2, status: 'unknown' }]);
     assert.equal(state.get().earlierUnknown, 0); assert.equal(state.get().additionalUnknown, true);
+    assert.equal(state.get().destination.label, 'Synthetic context');
+    assert.equal(state.get().destination.canSwitch, true);
     assert.ok(!JSON.stringify(state.get()).includes('synthetic-secret'));
     assert.equal(await readFile(join(directory, 'level'), 'utf8'), '0.2 1');
     if (process.platform !== 'win32') {

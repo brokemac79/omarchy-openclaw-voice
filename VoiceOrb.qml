@@ -64,6 +64,7 @@ Item {
   property var actionCards: []
   property int earlierUnknown: 0
   property bool additionalUnknown: false
+  property string destinationText: "Destination unknown"
   // Loudness 0..1 of each side of the conversation, straight off the daemon.
   property real youLevel: 0
   property real omaLevel: 0
@@ -163,6 +164,10 @@ Item {
         root.actionCards = Array.isArray(parsed.actionCards) ? parsed.actionCards.slice(-4) : []
         root.earlierUnknown = Number(parsed.earlierUnknown) || 0
         root.additionalUnknown = parsed.additionalUnknown === true
+        const destination = parsed.destination || {}
+        root.destinationText = (destination.state === "ready" ? "" : "Destination " + (destination.state || "stale") + " · ")
+          + (destination.agent ? destination.agent + " · " : "") + (destination.label || "Unknown")
+          + (destination.target ? " · " + destination.target : "")
         root.updatedAt = Number(parsed.updated) || 0
       } catch (e) {
         root.status = "error"
@@ -170,6 +175,7 @@ Item {
         root.recoveryAction = ""
         root.userWords = root.replyWords = ""
         root.actionCards = []; root.earlierUnknown = 0; root.additionalUnknown = false
+        root.destinationText = "Destination unknown"
         root.updatedAt = 0
       }
     }
@@ -179,6 +185,7 @@ Item {
       root.recoveryAction = ""
       root.userWords = root.replyWords = ""
       root.actionCards = []; root.earlierUnknown = 0; root.additionalUnknown = false
+      root.destinationText = "Destination unknown"
       root.updatedAt = 0
     }
   }
@@ -282,6 +289,14 @@ Item {
               color: Color.notifications.text
               font.pixelSize: 13
             }
+          }
+          Text {
+            width: parent.width
+            text: root.destinationText
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            color: Color.notifications.text
+            font.pixelSize: 12
           }
           Text {
             width: parent.width

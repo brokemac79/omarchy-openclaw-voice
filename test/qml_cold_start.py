@@ -24,7 +24,7 @@ for case in ('preexisting-state', 'missing-file', 'missing-parent', 'recreated-p
                 (root / module).symlink_to(Path('/usr/share/omarchy/shell') / module,
                                            target_is_directory=True)
             (root / 'plugin').mkdir()
-            for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'ActionCards.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml',
+            for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'DestinationPicker.qml', 'ActionCards.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml',
                              'Instance.js', 'openclaw-voice.svg'):
                 shutil.copyfile(source / filename, root / 'plugin' / filename)
             receipt = root / 'unexpected-control'

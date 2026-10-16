@@ -3,8 +3,8 @@ import { VoiceError } from './voice-errors.mjs';
 
 // A cancelled startup must close even a grant that arrives after Stop.
 export class VoiceSession {
-  constructor(rpc, sessionKey, voice = 'cove') {
-    this.rpc = rpc; this.sessionKey = sessionKey; this.voice = voice;
+  constructor(rpc, sessionKey, voice = 'cove', beforeCreate) {
+    Object.assign(this, { rpc, sessionKey, voice, beforeCreate });
     this.epoch = 0; this.grant = null; this.creating = false; this.closing = Promise.resolve();
     this.pending = Promise.resolve();
   }
@@ -35,35 +35,41 @@ export class VoiceSession {
   async acquire(epoch, previousClose, onProgress = () => {}) {
     try {
       await previousClose;
+      if (epoch !== this.epoch) throw new Error('Voice startup cancelled.');
+      const sessionKey = this.beforeCreate ? await this.beforeCreate() : this.sessionKey;
+      if (epoch !== this.epoch) throw new Error('Voice startup cancelled.');
+      this.sessionKey = sessionKey;
       await this.preflight(stage => { if (epoch === this.epoch) onProgress(stage); });
       if (epoch !== this.epoch) throw new Error('Voice startup cancelled.');
       onProgress('reservation-started');
       let grant;
       try { grant = await this.rpc('talk.client.create', {
-        sessionKey: this.sessionKey, provider: 'openai', model: MODEL, voice: this.voice,
+        sessionKey, provider: 'openai', model: MODEL, voice: this.voice,
         mode: 'realtime', transport: 'webrtc', brain: 'agent-consult', capabilities: ['gateway-control-v1'],
       }); } catch { throw new VoiceError('provider_session_failed'); }
       try {
         checkGrant(grant);
         if (epoch !== this.epoch) throw new Error('Voice startup cancelled.');
       } catch (error) {
-        if (grant?.voiceSessionId) await this.closeGrant(grant);
+        if (grant?.voiceSessionId) await this.closeGrant(grant, sessionKey);
         throw error;
       }
       this.grant = grant;
+      this.grantSessionKey = sessionKey;
       onProgress('provider-reserved');
       return { voiceSessionId: grant.voiceSessionId, model: MODEL };
     } finally { this.creating = false; }
   }
-  closeGrant(grant) {
-    return this.rpc('talk.client.close', { sessionKey: this.sessionKey, voiceSessionId: grant.voiceSessionId });
+  closeGrant(grant, sessionKey) {
+    return this.rpc('talk.client.close', { sessionKey, voiceSessionId: grant.voiceSessionId });
   }
   async close() {
     this.epoch++;
     const old = this.grant; this.grant = null;
+    const oldKey = this.grantSessionKey; this.grantSessionKey = null;
     // A late grant belongs to the cancelled call. Finish releasing it before
     // allowing a new engine to reserve another provider session.
-    this.closing = Promise.allSettled([this.closing, this.pending, old ? this.closeGrant(old) : undefined]);
+    this.closing = Promise.allSettled([this.closing, this.pending, old ? this.closeGrant(old, oldKey) : undefined]);
     await this.closing;
   }
 }

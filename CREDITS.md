@@ -29,6 +29,9 @@ The bar and status panel also add preparation/ready feedback and locally defined
 recovery guidance; startup diagnostics remain outside the conversation surfaces.
 `ActionCards.qml` adds separate, bounded transcription/action observations and
 explicit unknown outcomes. The controls can scroll to retain access on small screens.
+`DestinationPicker.qml` adds explicit selection of existing conversation contexts.
+The bar and conversation surfaces also show observed agent/node context and
+unavailable/stale state; selection never grants permissions.
 
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision

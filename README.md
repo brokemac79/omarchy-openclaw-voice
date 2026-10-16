@@ -236,6 +236,11 @@ Action observations show Heard or Outcome unknown separately from spoken caption
 Authoritative execution results are still pending an upstream correlation contract;
 see [action progress and remaining work](docs/ACTION-PROGRESS.md).
 
+The bar also shows the selected agent and node/conversation context. Right-click
+for explicit destination presets; End voice and review/dismiss unknown outcomes
+before switching. Configure exact existing destinations privately; see
+[agent and target selection](docs/DESTINATIONS.md).
+
 Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical

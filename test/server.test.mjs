@@ -16,8 +16,8 @@ test('real servers isolate controls and clear hello metadata without starting au
     await writeFile(path + '.tmp', JSON.stringify(event));
     await rename(path + '.tmp', path);
   };
-  const request = (path, command = 'status') => new Promise((resolve, reject) => {
-    const socket = net.connect(path, () => socket.write(JSON.stringify({ command }) + '\n'));
+  const request = (path, command = 'status', fields = {}) => new Promise((resolve, reject) => {
+    const socket = net.connect(path, () => socket.write(JSON.stringify({ command, ...fields }) + '\n'));
     let data = '';
     socket.setTimeout(1000, () => socket.destroy(new Error('test timeout')));
     socket.on('data', chunk => { data += chunk; }); socket.on('error', reject);
@@ -46,7 +46,13 @@ test('real servers isolate controls and clear hello metadata without starting au
           } finally { reading=false; }
         },20); }
         async stopAndWait(){clearInterval(this.timer);}
-        request(){throw Error('No provider or agent calls allowed in this test');}
+        async request(method,params){
+          if(method==='agents.list') return {agents:[{id:'main',name:'Synthetic main'},{id:'secondary',name:'Synthetic secondary'}]};
+          if(method==='node.list') return {nodes:[]};
+          if(method==='sessions.resolve') return {ok:true,key:params.key,agentId:params.key.split(':')[1]};
+          if(method==='sessions.list') return {sessions:[{key:params.search,agentId:params.agentId}]};
+          throw Error('No provider or agent calls allowed in this test');
+        }
       }
       export async function startGatewayClientWhenEventLoopReady(client){await client.start();}`);
     const config = join(root, 'gateway.json');
@@ -67,7 +73,8 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       const base = name === 'default' ? 'openclaw-voice' : 'openclaw-voice-test';
       const options = join(root, 'config', base); await mkdir(options, { recursive: true });
       await writeFile(join(options, 'config.json'), JSON.stringify({ openclawConfig: config, gatewaySdk: sdk,
-        python: detector, wake: { enabled: name === 'test' } }));
+        python: detector, wake: { enabled: name === 'test' },
+        destinations: [{id:'secondary',label:'Synthetic secondary context',sessionKey:'agent:secondary:main'}] }));
       const event = join(root, `${name}.json`); events.push(event);
       await publishEvent(event, { auth: { method: 'device-token', role: 'operator', deviceToken: 'synthetic-secret' }, server: { connId: name } });
       const child = spawn(process.execPath, [fileURLToPath(new URL('../src/server.mjs', import.meta.url))], {
@@ -89,19 +96,30 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       const state = await request(sockets[1], command);
       assert.equal(state.ok, true); assert.equal(state.requested, false); assert.equal(state.active, false);
     }
+    await until(sockets[1], state => state.destination?.state === 'ready');
+    const destinations = await request(sockets[1], 'destinations');
+    assert.equal(destinations.destinationChoices.length, 2);
+    assert.equal((await request(sockets[1], 'select-destination', {destinationId:'secondary'})).selectionChanged, true);
+    assert.equal((await request(sockets[1])).destination.agent, 'Synthetic secondary');
+    assert.equal((await request(sockets[0])).destination.id, 'configured');
+    assert.equal((await request(sockets[1], 'select-destination', {destinationId:'missing'})).selectionChanged, false);
+    assert.equal((await request(sockets[1])).destination.id, 'secondary');
+    assert.equal(JSON.parse(await readFile(join(root,'config/openclaw-voice-test/destination.json'))).sessionKey, 'agent:secondary:main');
     const cancellation = await request(sockets[1], 'cancel-request');
     assert.equal(cancellation.cancellation.outcome, 'unavailable');
     assert.equal(cancellation.workStatus, 'unknown');
     const diagnostics = await request(sockets[1], 'diagnostics');
     assert.equal(diagnostics.ready, false); assert.equal(diagnostics.gatewayConnected, true);
     assert.equal(diagnostics.agentWorkMs, null);
-    assert.ok(!/synthetic-secret|assistant|gatewayConnection|test-build|voiceSessionId/.test(JSON.stringify(diagnostics)));
+    assert.ok(!/synthetic-secret|assistant|gatewayConnection|test-build|voiceSessionId|destination|Synthetic secondary/.test(JSON.stringify(diagnostics)));
     await assert.rejects(readFile(detectorReceipt), { code: 'ENOENT' });
     assert.equal((await request(sockets[1], 'standby-once')).ok, false);
     assert.equal((await request(sockets[0], 'standby-conversation')).ok, false);
     assert.equal((await request(sockets[1], 'standby-conversation')).ok, true);
     const standby = await until(sockets[1], state => state.standby);
     assert.equal(standby.status, 'standby'); assert.equal(standby.active, false);
+    assert.equal((await request(sockets[1], 'select-destination', {destinationId:'configured'})).selectionChanged, false);
+    assert.equal((await request(sockets[1])).standby, true);
     assert.equal((await request(sockets[1], 'quiet')).standby, true);
     assert.equal((await request(sockets[1], 'cancel-request')).standby, true);
     await request(sockets[1], 'mute');
@@ -121,6 +139,8 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       assert.equal(next.gatewayConnection.authMethod, 'token');
       assert.equal(next.gatewayConnection.connId, type);
       assert.equal(next.standby, false); assert.equal(next.wakeMode, 'off');
+      await until(sockets[1], state => state.destination?.state === 'ready');
+      assert.equal((await request(sockets[1])).destination.id, 'secondary');
     }
   } finally {
     await Promise.all(children.map(async child => {
