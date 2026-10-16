@@ -74,6 +74,7 @@ const rpc = (method, params = {}) => {
 };
 session = new VoiceSession(rpc, config.sessionKey, config.voice);
 owner = new EngineOwner({ session, native,
+  wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,
   launch: callbacks => launchEngine(config, session, { ...callbacks, syntheticSilence }),
   launchWake: !syntheticSilence && config.wake?.enabled === true
     ? callbacks => launchWakeDetector(config, callbacks) : undefined,

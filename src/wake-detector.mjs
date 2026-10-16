@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 export async function launchWakeDetector(config, { onWake, onFailure, signal, spawnWorker = spawn } = {}) {
   if (config.wake?.enabled !== true) throw new Error('Wake support is disabled.');
   signal?.throwIfAborted();
-  const worker = spawnWorker(config.python, [fileURLToPath(new URL('../native/wake.py', import.meta.url))], {
+  const backend = config.wake.backend ?? 'openwakeword';
+  if (!['openwakeword', 'sherpa-onnx'].includes(backend)) throw new Error('Unknown local wake backend.');
+  const worker = spawnWorker(config.wake.python || config.python, [fileURLToPath(new URL('../native/wake.py', import.meta.url))], {
     stdio: ['pipe', 'pipe', 'pipe'], env: { ...Object.fromEntries(
       ['PATH', 'HOME', 'XDG_RUNTIME_DIR', 'XDG_CONFIG_HOME', 'PULSE_SERVER', 'PULSE_COOKIE', 'LANG']
         .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])), PYTHONUNBUFFERED: '1' },
@@ -61,9 +63,10 @@ export async function launchWakeDetector(config, { onWake, onFailure, signal, sp
   worker.stderr.resume(); // Never expose library diagnostics/device identifiers.
   worker.on('error', fail); worker.on('exit', fail); worker.stdin.on('error', fail);
   // Explicitly copy the small configuration; do not serialize the gateway config.
-  worker.stdin.write(JSON.stringify({ model: config.wake.model, melspec: config.wake.melspec,
-    embedding: config.wake.embedding, threshold: config.wake.threshold,
-    consecutive: config.wake.consecutive, inputDevice: config.inputDevice }) + '\n');
+  const fields = backend === 'sherpa-onnx' ? ['encoder', 'decoder', 'joiner', 'tokens', 'bpe', 'phrase', 'threshold', 'consecutive']
+    : ['model', 'melspec', 'embedding', 'threshold', 'consecutive'];
+  worker.stdin.write(JSON.stringify({ backend, ...Object.fromEntries(fields.filter(key => config.wake[key] !== undefined)
+    .map(key => [key, config.wake[key]])), inputDevice: config.inputDevice }) + '\n');
   try { await readiness; return handle; }
   catch (error) { await handle.close(); throw error; }
 }

@@ -45,7 +45,7 @@ ShellRoot {
       const c = cases[index];
       indicator.updatedAt = Date.now() / 1000;
       indicator.status = c[0];
-      indicator.label = c[0] === "standby" ? "Standby: local microphone · open conversation" : "Synthetic state";
+      indicator.label = c[0] === "standby" ? "Standby: local microphone · “Hey Open Claw” · open conversation" : "Synthetic state";
       const panel = indicator.conversation;
       panel.updatedAt = Date.now() / 1000; panel.nowSeconds = panel.updatedAt;
       panel.status = c[0]; panel.label = indicator.label;

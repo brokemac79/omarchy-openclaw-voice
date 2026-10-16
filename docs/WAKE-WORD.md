@@ -16,11 +16,13 @@ wake mode. Wake detection grants no permission, authentication or approval.
 The indicator uses a blue dot for Standby, amber for Connecting and green for
 Talk. Its tooltip names the state. Standby and Connecting also have a compact
 status panel; the existing conversation bubbles remain available in Talk.
-The selected return mode stays visible in the panel or tooltip.
+The selected phrase (when configured as text) and return mode stay visible in
+the panel or tooltip.
 
 ## Detector boundary
 
-The candidate adapter uses **openWakeWord with ONNX on Linux**. It reuses the
+The candidate supports **sherpa-onnx keyword spotting** and **openWakeWord with
+ONNX on Linux**, selected explicitly. Both reuse the
 native PulseAudio/PipeWire input path at 16 kHz mono S16LE. Its pipeline has no
 WebRTC, playback, encoder, network or recording element. No PCM or captions go
 to Node. The bounded stdout protocol accepts readiness, heartbeat and one wake.
@@ -36,8 +38,9 @@ session. No pre-activation buffer is transferred: say the phrase, wait for
 Talk readiness, then speak the request.
 
 The detector is absent during assistant playback. A fresh detector ignores its
-first two seconds to reduce activation from residual playback. A wake requires
-three consecutive qualifying frames by default. A bounded activity counter
+first two seconds to reduce activation from residual playback. openWakeWord
+requires three consecutive qualifying frames by default; sherpa-onnx supplies
+its own completed keyword decision. A bounded activity counter
 allows classifier predictions to finish within 960 ms of preceding speech;
 it retains no PCM. Input that has remained silent since arming cannot activate
 it, including a hardware-muted microphone that supplies silence. A prediction
@@ -94,6 +97,9 @@ The three ONNX assets came from upstream release `v0.5.1`, outside this checkout
 No positive phrase samples were used. This qualifies the adapter/runtime on
 generated signals only; it does not select “Hey Jarvis” as the product phrase
 or establish redistribution rights for a custom “Hey OpenClaw” model.
+After extracting the shared adapter, the same real-model/GStreamer checks also
+passed with NumPy 2.5.4 and ONNX Runtime 1.31.0. openWakeWord imports require
+scikit-learn even when its optional custom verifier is unused.
 
 ### Third-party “Hey OpenClaw” probe
 
@@ -132,23 +138,116 @@ python3 test/qualify_wake_phrase.py --model /absolute/path/to/openclaw.onnx \
   --embedding /absolute/path/to/embedding_model.onnx
 ```
 
+### Configurable phrase with sherpa-onnx
+
 [sherpa-onnx open-vocabulary keyword spotting](https://k2-fsa.github.io/sherpa/onnx/kws/index.html)
-is another candidate: it supports configuring phrases without retraining a
-classifier. Its particular model licences, resource cost and generated-phrase
-behavior have not been qualified here. No second detector backend is selected.
+supports configuring phrases without training a separate classifier. This is
+the preferred candidate for an opted-in room trial of “Hey Open Claw”. It is
+still disabled by default and does not replace an installed detector.
+
+The separately installed runtime is Apache-2.0. The official
+[`sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01` archive](https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2)
+has SHA-256 `f170013b4716e41b62b9bfd809687c207cef798ef9bc6534d524e17af9b6561a`.
+Its README explicitly identifies the model licence as Apache License 2.0,
+GigaSpeech XL as the training dataset, BPE tokens and the icefall training
+recipe. No dataset, model or runtime is bundled or downloaded by this product.
+
+The adapter accepts one English phrase of two to five words, tokenizes it
+locally using the supplied SentencePiece model and checks every token against
+the selected token set. The keyword library reads tokenized configuration from
+an anonymous memory file, which is then closed. It does not receive audio files,
+credentials or permission to use a network. Missing assets, incompatible tokens
+and unsupported settings fail closed before opening input. There is no backend
+or phrase fallback. The external model files used were:
+
+| Asset | SHA-256 |
+| --- | --- |
+| encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx | `1e721676515bcd42a186979733981213c66c80db680e1cc582dfedf3be76e678` |
+| decoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx | `e40ff43297abe815e8898494c17e71bba2152d9d40fa3eb803f75d0f7533329a` |
+| joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx | `eae9da0c7e1e6c6a3f4cc42d167899c388f6c6701b94cb96320e4f55df79624c` |
+| tokens.txt | `fd2ded4050a55d2b1578870ba8697d02371980217806b7558bd0a5cc60f3ba53` |
+| bpe.model | `c8a2a0129c4ab8e463164c142f82d25649661b122c8cd0b7aab5c9e80b90ad24` |
+
+On an AWS x86-64 test VM, the production adapter loaded with Python 3.14.4,
+sherpa-onnx/core 1.13.8, SentencePiece 0.2.2 and NumPy 2.5.4. It used one CPU
+thread and the upstream keyword threshold 0.25, keyword score 1 and trailing
+blank count 1. No threshold was tuned to fit the generated examples.
+
+| Generated speech | Target triggers | Negative triggers |
+| --- | --- | --- |
+| eSpeak NG 1.52.0, two voices, three speeds | 0/6 | 0/30 |
+| Piper 1.8.0, one LJSpeech voice, three length scales | 3/3 | 0/15 |
+
+The Piper tests used length scales `175/130`, `1` and `175/220`; these are
+generator settings, not measured speech rates. Negative controls included “Hey
+Claude”, “Hello computer”, “Open the door”, “Hey open door” and “Open claw”.
+Piper was an offline test generator only, using its Python API to produce PCM
+in memory without speaker playback. Its runtime has GPL terms and the selected
+[LJSpeech voice card](https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/ljspeech/high/MODEL_CARD)
+identifies a public-domain source dataset. Neither is a product dependency or
+bundled asset. The external generator model SHA-256 was
+`5d4f08ba6a2a48c44592eed3ce56bf85e9de3dd4e20df90541ae68a8310c029a`.
+
+The actual GStreamer worker also detected one generated neural phrase exactly
+once and rejected another phrase, silence and a tone. Each case exited and
+released its pipeline with no stderr diagnostics. Input came from a bounded
+test-only `appsrc`; the production CLI cannot select that source. Model loading
+took about 0.44 seconds including its imports; the probe's peak RSS before
+loading the test generator was 149308 KiB. Separate worker processes peaked at
+101904–102304 KiB, measured through their own `/proc/self/status` `VmHWM` to
+exclude the parent generator's inherited resource high-water mark. The
+generated appsrc audio ran faster than real time. These cloud timings do not measure physical
+capture, end-to-end readiness, Surface resource cost or battery drain. The
+mixed synthetic results, especially the eSpeak misses, do not establish human
+accuracy or a false-wake rate.
+
+To repeat the phrase probe and actual-worker checks with externally provisioned
+models and optional test-generator dependencies:
+
+```sh
+python3 test/qualify_sherpa_phrase.py --model-directory /absolute/path/to/kws-model
+python3 test/qualify_sherpa_phrase.py --model-directory /absolute/path/to/kws-model \
+  --piper-model /absolute/path/to/en_US-ljspeech-high.onnx
+python3 test/sherpa_native.py --model-directory /absolute/path/to/kws-model \
+  --piper-model /absolute/path/to/en_US-ljspeech-high.onnx
+```
 
 [Porcupine](https://picovoice.ai/docs/porcupine/) supports Linux x86-64/custom
 phrases but requires an account AccessKey. It is not selected.
 
 ## Explicit operation
 
-After qualifying the runtime and licensed model set, merge into the private
-companion configuration:
+After qualifying the runtime and licensed model set, merge one explicit backend
+into the private companion configuration. An isolated wake interpreter must
+also be able to import the system PyGObject/GStreamer bindings. `wake.python`
+selects that interpreter without changing the existing Talk interpreter.
+
+For the configurable English phrase and the model above:
 
 ```json
 {
   "wake": {
     "enabled": true,
+    "backend": "sherpa-onnx",
+    "python": "/absolute/path/to/wake-venv/bin/python",
+    "phrase": "Hey Open Claw",
+    "encoder": "/absolute/path/to/encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx",
+    "decoder": "/absolute/path/to/decoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx",
+    "joiner": "/absolute/path/to/joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx",
+    "tokens": "/absolute/path/to/tokens.txt",
+    "bpe": "/absolute/path/to/bpe.model",
+    "threshold": 0.25
+  }
+}
+```
+
+For a separately qualified openWakeWord classifier:
+
+```json
+{
+  "wake": {
+    "enabled": true,
+    "backend": "openwakeword",
     "model": "/absolute/path/to/selected-phrase.onnx",
     "melspec": "/absolute/path/to/melspectrogram.onnx",
     "embedding": "/absolute/path/to/embedding_model.onnx",
@@ -158,11 +257,12 @@ companion configuration:
 }
 ```
 
-Paths must be absolute existing ONNX files. Missing models/dependencies fail
-closed. Select a mode explicitly for this running service:
+Asset paths must be absolute existing files with the indicated extensions.
+Missing models/dependencies fail closed. `consecutive` applies only to
+openWakeWord; sherpa-onnx rejects it. Omitting `backend` retains the original
+openWakeWord adapter. Explicitly arm conversation standby for this running service:
 
 ```sh
-openclaw-voice standby-once
 openclaw-voice standby-conversation
 openclaw-voice stop
 ```
@@ -222,14 +322,15 @@ missing-model failure and generated-signal inference on Linux x86-64. Then use
 an explicitly opted-in room trial in a separate candidate instance, preserving
 the installed release until that trial is authorized:
 
-1. Verify Off owns no input and boot/reconnect stays Off. Arm each mode, check
+1. Verify Off owns no input and boot/reconnect stays Off. Arm conversation standby, check
    local-only input and confirm Stop releases it.
 2. Measure wake-to-ready latency with monotonic numeric counters, without
    recordings or real captions. Speak only after readiness. Check ordinary
    approval rules still apply.
 3. Try 20 wakes near/far, then an hour of representative TV/room noise and
    assistant playback. Include hardware mute, repeated phrases and Stop races.
-4. Check one-request behavior with short/long replies, pauses and host actions.
+4. Once an authoritative completion boundary is available, qualify one-request
+   behavior with short/long replies, pauses and host actions.
    It must not treat an acknowledgment as a finished action or truncate the
    requested answer. Disable it if provider events cannot distinguish that boundary.
 5. Measure standby CPU/RSS and battery drain against Off on the actual Surface.

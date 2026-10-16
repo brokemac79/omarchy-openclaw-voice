@@ -1,19 +1,16 @@
 """Offline phrase probe using generated eSpeak speech; never opens audio devices."""
 import argparse
 import hashlib
-import io
 from importlib.metadata import version
 import json
-import math
 import platform
 from pathlib import Path
 import subprocess
 import sys
-import wave
 
 import numpy as np
 from openwakeword.model import Model
-from scipy.signal import resample_poly
+from synthetic_speech import speech_pcm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'native'))
 from wake_gate import WakeGate
@@ -34,15 +31,7 @@ phrases = [('Hey Open Claw', True), ('Hey Claude', False),
 for voice in ('en-gb', 'en-us'):
     for speed in (130, 175, 220):
         for phrase, expected in phrases:
-            # --stdout emits a WAV stream instead of opening a playback device.
-            audio = subprocess.check_output(['espeak-ng', '--stdout', '-v', voice, '-s', str(speed), phrase])
-            with wave.open(io.BytesIO(audio)) as wav:
-                assert wav.getnchannels() == 1 and wav.getsampwidth() == 2
-                rate = wav.getframerate()
-                samples = np.frombuffer(wav.readframes(wav.getnframes()), dtype='<i2')
-            divisor = math.gcd(rate, 16000)
-            pcm = resample_poly(samples.astype(np.float32), 16000 // divisor, rate // divisor)
-            pcm = np.concatenate((np.zeros(32000), pcm, np.zeros(32000))).clip(-32768, 32767).astype(np.int16)
+            pcm = speech_pcm(phrase, voice, speed)
             np.random.seed(0); model.reset(); gate = WakeGate()
             maximum, audible_maximum, hit = 0.0, 0.0, False
             consecutive = audible_consecutive = longest = audible_longest = 0

@@ -2,8 +2,8 @@ import { Transcript } from './transcript.mjs';
 
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
-  constructor({ session, launch, launchWake, native, now = () => performance.now(), singleRequestBoundary = false }) {
-    Object.assign(this, { session, launch, launchWake, native, now });
+  constructor({ session, launch, launchWake, native, wakePhrase, now = () => performance.now(), singleRequestBoundary = false }) {
+    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.epoch = 0; this.engine = null;
@@ -57,7 +57,8 @@ export class EngineOwner {
         const candidate = await acquisition;
         if (epoch !== this.epoch) return;
         this.detector = candidate; this.standbyStarting = false; this.standby = true;
-        this.phase = 'standby'; this.caption = `Standby: local microphone · ${mode === 'one-request' ? 'one request' : 'open conversation'}`;
+        const phrase = this.wakePhrase ? ` · “${this.wakePhrase}”` : '';
+        this.phase = 'standby'; this.caption = `Standby: local microphone${phrase} · ${mode === 'one-request' ? 'one request' : 'open conversation'}`;
         this.render();
       } catch { if (epoch === this.epoch) await this.stop('Local wake unavailable. Check model and dependencies.'); }
     })();

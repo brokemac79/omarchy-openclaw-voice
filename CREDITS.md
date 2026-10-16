@@ -47,3 +47,14 @@ The optional wake adapter calls separately installed
 contributors (Apache-2.0) through its public Python API. No upstream code or
 models are bundled. Included upstream pretrained models have separate
 CC BY-NC-SA 4.0 terms; see [the model assessment](docs/WAKE-WORD.md).
+
+The configurable English wake adapter calls
+[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) by the k2-fsa/sherpa-onnx
+contributors and [SentencePiece](https://github.com/google/sentencepiece) by
+Google and contributors through their public Python APIs (both Apache-2.0).
+The externally provisioned GigaSpeech keyword model identifies its own
+Apache-2.0 licence and training provenance. No upstream code, runtime, model or
+dataset is bundled. Optional synthetic qualification uses eSpeak NG or
+[Piper](https://github.com/OHF-Voice/piper1-gpl) (GPL) and an external LJSpeech
+voice; these are test generators, not product speech providers. See the model
+assessment for exact artifacts, hashes, licence distinctions and proof limits.
