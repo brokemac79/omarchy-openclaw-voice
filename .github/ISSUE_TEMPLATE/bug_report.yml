@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible problem with the Omarchy OpenClaw Voice integration
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not include credentials, private gateway URLs, recordings, real transcripts or private desktop captures. Report security issues privately as described in SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "v0.4.1 or commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Omarchy, OpenClaw and install details
+      description: "Versions/builds, local or remote gateway, marketplace or manual install; omit hostnames and credentials."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: "Start from a known voice state and describe the actions taken."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence and checks
+      description: "Sanitised error codes/logs and whether reproduced with offline fixtures, Omarchy UI or live audio. Do not attach real speech or private captures."
