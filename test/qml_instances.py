@@ -22,7 +22,7 @@ try:
                 raise SystemExit('Installed Omarchy shell modules are required.')
             (root / module).symlink_to(target, target_is_directory=True)
         (root / 'plugin').mkdir()
-        for name in ('VoiceIndicator.qml', 'VoiceControls.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
+        for name in ('VoiceIndicator.qml', 'VoiceControls.qml', 'ActionCards.qml', 'VoiceOrb.qml', 'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
             shutil.copyfile(source / name, root / 'plugin' / name)
         for name, label in zip(names, ['Fixture A', 'Fixture B']):
             runtime = Path(os.environ['XDG_RUNTIME_DIR']) / ('openclaw-voice-' + name)

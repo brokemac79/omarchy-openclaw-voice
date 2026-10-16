@@ -1,6 +1,7 @@
 import { Transcript } from './transcript.mjs';
 import { Readiness, monotonicNow } from './readiness.mjs';
 import { VoiceError, failureDetails } from './voice-errors.mjs';
+import { ActionProgress } from './action-progress.mjs';
 
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
@@ -21,6 +22,7 @@ export class EngineOwner {
     this.sessionReady = this.transportActive = false;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
+    this.actions = new ActionProgress();
     this.readiness = new Readiness(now); this.failure = null; this.gatewayConnected = true;
     this.startupStage = null; this.captureReady = false;
   }
@@ -83,6 +85,7 @@ export class EngineOwner {
     this.requested = true; this.muted = this.muteConfirmed = false;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
+    this.actions.clear();
     this.transcript.clear();
     const epoch = ++this.epoch, previous = this.startup;
     this.phase = 'connecting'; this.caption = 'Connecting to OpenClaw — wait for Talk'; this.render();
@@ -120,6 +123,7 @@ export class EngineOwner {
     this.readiness.mark('stopped'); this.startupStage = null;
     this.native.levels(0, 0);
     this.transcript.clear();
+    this.actions.end();
     this.phase = 'stopping'; this.caption = 'Releasing microphone'; this.render();
     const old = this.engine; this.engine = null;
     // Release devices immediately, even when gateway cleanup is waiting for a late grant.
@@ -177,12 +181,13 @@ export class EngineOwner {
     // Never substitute whole-session abort, provider-turn completion or Stop.
     return { outcome: 'unavailable', reason: 'exact_request_control_unavailable' };
   }
-  dismissResult() { this.lastResult = ''; this.render(); }
+  dismissResult() { this.lastResult = ''; this.actions.dismiss(); this.render(); }
   controls() {
     return { callRequested: this.requested, inputMuted: this.muteConfirmed,
       inputMuteRequested: this.muted, speechQuiet: this.outputMuteConfirmed,
       speechQuietRequested: this.outputMuted, workStatus: 'unknown',
       cancelAvailable: false, lastResult: this.lastResult,
+      ...this.actions.snapshot(),
       startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
       recoveryAction: this.failure?.recovery ?? '' };
   }
@@ -202,6 +207,7 @@ export class EngineOwner {
   }
   talk(data) {
     if (!this.requested) return;
+    this.actions.accept(data);
     if (data.type === 'session.ready') { this.sessionReady = true; this.readiness.mark('talk-ready'); this.updateReadiness(); }
     this.readiness.talk(data);
     if (data.type === 'turn.ended' && this.wakeMode === 'one-request' && this.turnEndedAt === null) {

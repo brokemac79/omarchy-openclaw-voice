@@ -232,6 +232,10 @@ The controls show work status as unknown and retain the last received final text
 excerpt after End or audio failure; dismiss it or start a new call to clear it.
 See [interruption controls and the upstream cancellation gap](docs/INTERRUPTIONS.md).
 
+Action observations show Heard or Outcome unknown separately from spoken captions.
+Authoritative execution results are still pending an upstream correlation contract;
+see [action progress and remaining work](docs/ACTION-PROGRESS.md).
+
 Microphone mute sends silence while keeping the input device open; Stop releases the device and closes
 the audio engine. A network or engine failure stops the conversation. Reconnection
 does not reopen the microphone. WebRTC supports speaking over a reply; physical

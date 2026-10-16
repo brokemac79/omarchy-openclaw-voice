@@ -31,6 +31,12 @@ or audio failure, until dismissed, the next call or companion shutdown. No
 transcript history is added. Exact request cancellation is unavailable for the
 current native route; see [interruption controls](docs/INTERRUPTIONS.md).
 
+Action cards confirm transcription only, then report unknown outcomes. Provider
+replies and tool-shaped payloads cannot establish host success or cancellation.
+Their correlation ledger and visible cards are bounded and volatile; they add
+no execution payloads to diagnostics. See [action observations](docs/ACTION-PROGRESS.md)
+for the upstream contract required to finish result tracking.
+
 Startup diagnostics expose bounded monotonic durations and closed milestone/error
 codes through a separate local command. They exclude speech, credentials,
 connection identifiers and endpoints. Recovery guidance comes from local text,
