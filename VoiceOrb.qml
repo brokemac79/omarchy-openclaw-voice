@@ -86,7 +86,7 @@ Item {
   readonly property bool active: status === "listening" || status === "thinking"
                               || status === "acting" || status === "confirm"
                               || status === "error"
-                              || status === "checking" || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
+                              || status === "input-muted" || status === "checking" || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
   readonly property bool awake: active && fresh
   readonly property bool orbVisible: showOrb && awake
   readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
@@ -302,7 +302,7 @@ Item {
           Text {
             width: parent.width
             visible: root.label !== "" && (root.status === "error" || root.status === "standby" || root.status === "preparing"
-                     || root.status === "connecting" || root.label.includes("standby") || root.label.includes("open conversation"))
+                     || root.status === "input-muted" || root.status === "connecting" || root.label.includes("Hold") || root.label.includes("standby") || root.label.includes("open conversation"))
             text: root.label
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap

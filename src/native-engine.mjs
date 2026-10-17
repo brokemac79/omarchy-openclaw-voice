@@ -104,16 +104,17 @@ export async function launchEngine(config, session, { syntheticSilence = false,
   worker.stderr.resume();
   worker.on('error', fail); worker.on('exit', fail); worker.stdin.on('error', fail);
   const handle = {
-    async start({ muted = false, outputMuted = false } = {}) {
+    async start({ muted = false, outputMuted = false, holdMode = false } = {}) {
       desiredMute = muted;
       desiredQuiet = outputMuted;
       await session.create(onProgress);
       if (closed || failed) return;
       started = true;
-      send({ command: 'start', muted: desiredMute, outputMuted: desiredQuiet, inputDevice: config.inputDevice, outputDevice: config.outputDevice });
+      send({ command: 'start', muted: desiredMute, outputMuted: desiredQuiet, ...(holdMode ? { holdMode: true } : {}), inputDevice: config.inputDevice, outputDevice: config.outputDevice });
       onProgress?.('audio-requested');
     },
     mute(value) { desiredMute = value; if (started) send({ command: 'mute', muted: value }); },
+    holdInput(token, enabled) { if (started) send({ command: 'hold-input', token, enabled }); },
     quiet(value) { desiredQuiet = value; if (started) send({ command: 'quiet', outputMuted: value }); },
     close() {
       if (closePromise) return closePromise;

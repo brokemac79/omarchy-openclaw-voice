@@ -6,8 +6,8 @@ import { ActionProgress } from './action-progress.mjs';
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
   constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false,
-    getDestination = () => ({}), getAudio = () => ({}), onStopped = () => {} }) {
-    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, getAudio, onStopped });
+    getDestination = () => ({}), getAudio = () => ({}), getHold = () => ({}), onStopped = () => {} }) {
+    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, getAudio, getHold, onStopped });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.epoch = 0; this.engine = null;
@@ -28,6 +28,7 @@ export class EngineOwner {
     this.reviewRequired = false;
     this.readiness = new Readiness(now); this.failure = null; this.gatewayConnected = true;
     this.startupStage = null; this.captureReady = false;
+    this.holdMode = false;
   }
   releaseDetector() {
     const detector = this.detector; this.detector = null;
@@ -77,7 +78,7 @@ export class EngineOwner {
     this.startup = work.catch(() => {});
     return work;
   }
-  start({ wake = false, invokedAtMs } = {}) {
+  start({ wake = false, hold = false, invokedAtMs } = {}) {
     if (this.requested) return this.startup;
     if (!wake) this.wakeMode = 'off';
     if (!wake) this.wakeDetectedAt = null;
@@ -85,7 +86,9 @@ export class EngineOwner {
     this.sessionReady = this.transportActive = this.captureReady = false;
     this.readiness.begin(invokedAtMs); this.failure = null; this.startupStage = 'native-worker';
     this.releaseDetector(); this.turnEndedAt = null;
-    this.requested = true; this.muted = this.muteConfirmed = false;
+    this.holdMode = hold === true;
+    this.lastInputMode = this.holdMode ? 'hold' : 'conversation';
+    this.requested = true; this.muted = this.muteConfirmed = this.holdMode;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.lastResult = '';
     this.actions.clear();
@@ -110,7 +113,7 @@ export class EngineOwner {
         });
         if (epoch !== this.epoch) { await candidate.close(); return; }
         this.engine = candidate; this.lastSeen = this.startedAt = this.now();
-        await candidate.start({ muted: this.muted, outputMuted: this.outputMuted });
+        await candidate.start({ muted: this.muted, outputMuted: this.outputMuted, ...(this.holdMode ? { holdMode: true } : {}) });
         if (epoch === this.epoch) this.lastSeen = this.startedAt = this.now();
       } catch (error) {
         if (epoch === this.epoch) await this.fail(error);
@@ -123,6 +126,7 @@ export class EngineOwner {
     const epoch = ++this.epoch;
     this.wakeMode = 'off'; this.turnEndedAt = null; this.releaseDetector();
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
+    this.holdMode = false;
     this.outputMuted = this.outputMuteConfirmed = false;
     this.sessionReady = this.transportActive = this.captureReady = false;
     this.readiness.mark('stopped'); this.startupStage = null;
@@ -169,6 +173,7 @@ export class EngineOwner {
     this.render();
   }
   mute() {
+    if (this.holdMode) return; // Only a live physical-press lease can admit input.
     // In standby, mute means fully disarm and release input. It cannot wake.
     if (this.standby || this.standbyStarting) { void this.stop(); return; }
     if (!this.requested) return;
@@ -181,6 +186,11 @@ export class EngineOwner {
     this.outputMuted = value === true;
     this.engine?.quiet(this.outputMuted);
     this.render();
+  }
+  setHoldInput(token, enabled) {
+    if (!this.requested || !this.holdMode) return;
+    this.muted = !enabled;
+    this.engine?.holdInput(token, enabled);
   }
   cancelRequest() {
     // talk.client.steer selects by session, not this call and exact request.
@@ -200,6 +210,7 @@ export class EngineOwner {
       cancelAvailable: false, lastResult: this.lastResult,
       answer: this.answer,
       audio: this.getAudio(),
+      hold: this.getHold(),
       ...this.actions.snapshot(),
       reviewRequired: this.reviewRequired, ...this.getDestination(),
       startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
@@ -254,6 +265,13 @@ export class EngineOwner {
       this.native.set(audio.releaseUnconfirmed ? 'error' : 'checking', audio.releaseUnconfirmed
         ? 'Audio release unconfirmed. Stop the companion service.' : audio.check.phase === 'stopping' ? 'Releasing local audio check'
           : 'Local speaker check · Test tone · Microphone off', {}, this.controls());
+      return;
+    }
+    if (this.holdMode && this.active) {
+      const hold = this.getHold();
+      this.native.set(this.muteConfirmed ? 'input-muted' : 'listening',
+        hold.held ? this.muteConfirmed ? 'Preparing hold input — wait' : 'Hold ready — Speak now'
+          : this.muteConfirmed ? 'Input muted · Reply continues · Hold to speak again' : 'Muting input · Reply continues', this.transcript.get(), this.controls());
       return;
     }
     const mode = this.requested && this.wakeMode !== 'off'

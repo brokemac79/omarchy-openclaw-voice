@@ -14,6 +14,7 @@ PanelWindow {
   signal selectDestination(string id)
   signal showAnswer()
   signal showAudio()
+  signal showHold()
   visible: false
   anchors { top: true; right: true }
   margins { top: 52; right: 18 }
@@ -64,6 +65,14 @@ PanelWindow {
         spacing: 10
         Text { text: "Voice controls"; color: Color.notifications.text; font.pixelSize: 15; font.bold: true }
         Rectangle {
+          width: 154; height: 44; radius: 7
+          color: Color.notifications.background; border.color: Color.notifications.border
+          Text { anchors.centerIn: parent; text: "Hold to talk"; color: Color.notifications.text; font.pixelSize: 13 }
+          Accessible.role: Accessible.Button; Accessible.name: "Hold to talk"
+          Accessible.onPressAction: root.showHold()
+          MouseArea { anchors.fill: parent; onClicked: root.showHold() }
+        }
+        Rectangle {
           width: 154; height: 40; radius: 7
           color: Color.notifications.background; border.color: Color.notifications.border
           Text { anchors.centerIn: parent; text: "Audio setup"; color: Color.notifications.text; font.pixelSize: 13 }
@@ -98,7 +107,7 @@ PanelWindow {
           spacing: 8
           Repeater {
             model: [
-              {label: root.inputPending ? "Updating input…" : root.voiceState.inputMuted ? "Unmute input" : "Mute input", command: "mute", available: root.inCall && !root.inputPending},
+              {label: root.inputPending ? "Updating input…" : root.voiceState.inputMuted ? "Unmute input" : "Mute input", command: "mute", available: root.inCall && !root.inputPending && !(root.voiceState.hold && root.voiceState.hold.mode)},
               {label: root.outputPending ? "Updating speech…" : root.voiceState.speechQuiet ? "Resume speech" : "Quiet", command: root.voiceState.speechQuiet ? "resume-speech" : "quiet", available: root.inCall && !root.outputPending},
               {label: "Cancel request", command: "cancel-request", available: false},
               {label: "End voice", command: "stop", available: true}

@@ -13,6 +13,7 @@ import { VoiceError, failureDetails, gatewayFailure } from './voice-errors.mjs';
 import { Destinations } from './destinations.mjs';
 import { AudioDevices } from './audio-devices.mjs';
 import { launchAudioCheck } from './local-audio-check.mjs';
+import { HoldInput } from './hold-input.mjs';
 
 const config = await loadConfig();
 const syntheticSilence = process.env.OPENCLAW_VOICE_TEST_SILENCE === '1';
@@ -21,7 +22,7 @@ const runtime = join(process.env.XDG_RUNTIME_DIR, config.instance.basename);
 // Fail before acquiring control or connecting if the selected SDK is unavailable.
 const { sdk: { GatewayClient, startGatewayClientWhenEventLoopReady }, binding: gatewaySdk } = await loadGatewaySdk(config.sdk);
 const connection = createConnectionStatus();
-let connected = false, shuttingDown = false, owner, session, native, destinations, audio;
+let connected = false, shuttingDown = false, owner, session, native, destinations, audio, hold;
 const status = () => ({ connected, requested: owner.requested, active: owner.active,
   standby: owner.standby, standbyStarting: owner.standbyStarting, wakeMode: owner.wakeMode,
   wakeEnabled: config.wake?.enabled === true && !syntheticSilence,
@@ -35,6 +36,9 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
   switch (command) {
     case 'status': return status();
     case 'destinations': await destinations.refresh(); return destinations.snapshot();
+    case 'hold-start': return { ...status(), holdAccepted: hold.press(invocation.holdToken) };
+    case 'hold-renew': return { ...status(), holdAccepted: hold.renew(invocation.holdToken) };
+    case 'hold-release': return { ...status(), holdAccepted: hold.release(invocation.holdToken) };
     case 'audio-devices': audio.message = ''; await audio.refresh(); return status();
     case 'select-audio-device':
       try { await audio.select(invocation.deviceKind, invocation.deviceId); return { ...status(), audioSelectionChanged: true }; }
@@ -61,12 +65,13 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
       catch (error) { return { ready: false, failure: failureDetails(error) }; }
     case 'toggle':
       if (owner.requested) await owner.stop();
+      else if (owner.reviewRequired && owner.lastInputMode === 'hold') return { ...status(), startFailure: failureDetails(new VoiceError('mode_switch_blocked')) };
       else if (audio.occupied) return { ...status(), startFailure: failureDetails(new VoiceError('audio_busy')) };
       else if (!connected) await owner.fail(new VoiceError('gateway_unavailable'));
       else if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) await owner.fail(new VoiceError('destination_unavailable'));
       else void owner.start(invocation);
       return status();
-    case 'stop': await audio.stopCheck(); await owner.stop(); return status();
+    case 'stop': hold.cancel(); await audio.stopCheck(); await owner.stop(); return status();
     case 'quiet': owner.quiet(true); return status();
     case 'resume-speech': owner.quiet(false); return status();
     case 'cancel-request': return { ...status(), cancellation: owner.cancelRequest() };
@@ -75,6 +80,7 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
     case 'standby-conversation':
       if (!connected || syntheticSilence || config.wake?.enabled !== true) throw new Error('Wake unavailable.');
       if (audio.occupied) throw new VoiceError('audio_busy');
+      if (owner.reviewRequired && owner.lastInputMode === 'hold') throw new VoiceError('mode_switch_blocked');
       if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) throw new VoiceError('destination_unavailable');
       void owner.arm(command === 'standby-once' ? 'one-request' : 'conversation');
       return status();
@@ -139,14 +145,20 @@ audio = new AudioDevices({ path: config.audioSelectionPath, inputDevice: config.
 });
 await audio.load();
 owner = new EngineOwner({ session, native,
-  getDestination: () => destinations.snapshot(), getAudio: () => audio.snapshot(),
+  getDestination: () => destinations.snapshot(), getAudio: () => audio.snapshot(), getHold: () => hold?.snapshot(),
   onStopped: () => { destinations.endCall(); if (!audio.occupied) audio.binding = null; },
   wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,
   launch: async callbacks => launchEngine({ ...config, ...await audio.forVoice() }, session, { ...callbacks, syntheticSilence }),
   launchWake: !syntheticSilence && config.wake?.enabled === true
     ? async callbacks => launchWakeDetector({ ...config, ...await audio.forVoice(true) }, callbacks) : undefined,
 });
+hold = new HoldInput({ owner, releaseBehavior: config.holdRelease,
+  canStart: () => connected && !shuttingDown && !audio.occupied && !destinations.switching
+    && destinations.snapshot().destination.state === 'ready' && !owner.mediaFault && owner.phase !== 'stopping',
+});
 owner.setGatewayConnected(false);
+const holdTimer = setInterval(() => hold.tick(), 100);
+holdTimer.unref();
 const healthTimer = setInterval(() => {
   audio.tick();
   if ((owner.requested || owner.standby || owner.standbyStarting) && destinations.snapshot().destination.state !== 'ready') {
@@ -164,7 +176,7 @@ audioTimer.unref();
 void audio.refresh();
 async function shutdown(code = 0) {
   if (shuttingDown) return;
-  shuttingDown = true; clearInterval(healthTimer); clearInterval(destinationTimer); clearInterval(audioTimer);
+  shuttingDown = true; clearInterval(healthTimer); clearInterval(destinationTimer); clearInterval(audioTimer); clearInterval(holdTimer);
   // systemd also kills the whole control group if a provider cleanup stalls.
   await audio.stopCheck(); await owner.stop(); await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
 }

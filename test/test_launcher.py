@@ -37,11 +37,12 @@ class InstanceLauncherTests(unittest.TestCase):
     def test_in_call_controls_never_start_or_stop_a_service_on_failed_delivery(self):
         module = runpy.run_path(str(LAUNCHER))
         for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination',
-                     'audio-devices', 'select-audio-device', 'audio-speaker-check', 'audio-stop-check'):
+                     'audio-devices', 'select-audio-device', 'audio-speaker-check', 'audio-stop-check',
+                     'hold-start', 'hold-renew', 'hold-release'):
             with self.subTest(mode=mode), \
                     patch.dict(os.environ, {'OPENCLAW_VOICE_INSTANCE': 'test', 'XDG_RUNTIME_DIR': '/tmp/test'}), \
                     patch.object(sys, 'argv', [str(LAUNCHER), mode] + (['fixture'] if mode == 'select-destination' else
-                        ['input', 'default'] if mode == 'select-audio-device' else [])), \
+                        ['input', 'default'] if mode == 'select-audio-device' else ['a' * 16] if mode.startswith('hold-') else [])), \
                     patch('socket.AF_UNIX', 1, create=True), \
                     patch('socket.socket', side_effect=OSError('synthetic unavailable control')), \
                     patch('subprocess.run') as run:
@@ -57,6 +58,16 @@ class InstanceLauncherTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     module['main']()
                 sock.assert_not_called(); run.assert_not_called()
+
+    def test_hold_tokens_are_literal_and_invalid_arguments_never_reach_io(self):
+        module = runpy.run_path(str(LAUNCHER))
+        for command in ('hold-start', 'hold-renew', 'hold-release'):
+            for token in ('', '../bad', 'a;command', 'z' * 16, 'a' * 33):
+                with patch.object(sys, 'argv', [str(LAUNCHER), command, token]), \
+                        patch('socket.socket') as sock, patch('subprocess.run') as run:
+                    with self.assertRaises(SystemExit):
+                        module['main']()
+                    sock.assert_not_called(); run.assert_not_called()
 
     def test_invalid_destination_is_rejected_before_io(self):
         module = runpy.run_path(str(LAUNCHER))

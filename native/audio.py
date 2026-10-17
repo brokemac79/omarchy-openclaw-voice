@@ -9,8 +9,10 @@ import threading
 import time
 if __package__:
     from .device_binding import bind_device, device_matches
+    from .hold_gate import HoldGate
 else:
     from device_binding import bind_device, device_matches
+    from hold_gate import HoldGate
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -42,6 +44,7 @@ class AudioWorker:
         self.output_updated = 0.0
         self.negotiating = False
         self.devices = {}
+        self.hold_gate = None
 
     def emit(self, event, **data):
         if self.stopping:
@@ -68,7 +71,8 @@ class AudioWorker:
     def start(self, command):
         if self.pipeline:
             return self.fail('already-started')
-        self.muted = command.get('muted') is True
+        self.hold_gate = HoldGate() if command.get('holdMode') is True else None
+        self.muted = self.hold_gate is not None or command.get('muted') is True
         self.output_muted = command.get('outputMuted') is True
         source = 'audiotestsrc name=capture is-live=true wave=silence' if self.synthetic else 'pulsesrc name=capture do-timestamp=true'
         sink = 'fakesink name=playback sync=true async=false' if self.synthetic else 'pulsesink name=playback sync=true async=false'
@@ -197,6 +201,10 @@ class AudioWorker:
     def heartbeat(self):
         if self.stopping:
             return False
+        if self.hold_gate is not None and not self.hold_gate.expire() and not self.muted:
+            self.muted = True
+            self.input_level = 0.0
+            self.pipeline.get_by_name('micmute').set_property('mute', True)
         if any(not device_matches(self.pipeline.get_by_name(element), name) for element, name in self.devices.items()):
             return self.fail('audio-device-changed')
         if time.monotonic() - self.output_updated > 0.3:
@@ -217,7 +225,18 @@ class AudioWorker:
                 self.start(command)
             elif action == 'answer':
                 self.answer(command.get('sdp'))
-            elif action == 'mute' and self.pipeline:
+            elif action == 'hold-input' and self.pipeline and self.hold_gate is not None:
+                if command.get('enabled') is True:
+                    allowed = self.hold_gate.renew(command.get('token'))
+                else:
+                    self.hold_gate.release(command.get('token'))
+                    allowed = self.hold_gate.expire()
+                self.muted = not allowed
+                self.pipeline.get_by_name('micmute').set_property('mute', self.muted)
+                if self.muted:
+                    self.input_level = 0.0
+                self.heartbeat()
+            elif action == 'mute' and self.pipeline and self.hold_gate is None:
                 self.muted = command.get('muted') is True
                 self.pipeline.get_by_name('micmute').set_property('mute', self.muted)
                 if self.muted:

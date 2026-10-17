@@ -40,6 +40,13 @@ list allows only bounded HTTP/HTTPS URLs without embedded credentials or control
 characters, opened through Qt only on explicit activation. It adds no HTML or
 code execution. See [answer limits](docs/ANSWERS.md).
 
+Hold-to-talk starts muted, admits input only after verified readiness, and uses
+UI/daemon/native leases plus a maximum press duration. Release defaults to input
+mute with capture still open; `holdRelease: "end"` ends capture and playback.
+Retired presses cannot reopen input. No background pre-roll, submitted transcript,
+request commit, cancellation or completion claim is added. See
+[hold safety and proof limits](docs/HOLD-TO-TALK.md).
+
 Audio setup uses read-only bounded local discovery and private device preferences.
 Device changes, voice/wake ownership and the explicit local test tone are mutually
 exclusive. The tone path has no input, SDK, speech provider or recordings, and is

@@ -11,6 +11,7 @@ test('runtime state is private, bounds captions, and clears audio and caption on
   try {
     state.set('listening', 'Synthetic caption '.repeat(30), { user: 'x'.repeat(4000), assistant: '<b>Plain text</b>' },
       { lastResult: 'r'.repeat(4000), cancelAvailable: true, workStatus: 'completed', token: 'synthetic-secret',
+        hold: { mode: true, held: true, token: 'synthetic-secret', remainingMs: 99999, releaseBehavior: 'unknown' },
         audio: { state: 'ready', inputs: [{ id: 'default', label: 'Synthetic microphone', detail: 'fixture-mic', token: 'synthetic-secret' }],
           token: 'synthetic-secret', check: { phase: 'checking', mode: 'speaker', remainingMs: 99999, token: 'synthetic-secret' } },
         actionCards: [{ number: 1, status: 'heard', text: 'synthetic-secret' },
@@ -31,6 +32,7 @@ test('runtime state is private, bounds captions, and clears audio and caption on
     assert.equal(state.get().destination.canSwitch, true);
     assert.equal(state.get().audio.inputs[0].label, 'Synthetic microphone');
     assert.deepEqual(state.get().audio.check, { phase: 'checking', mode: 'speaker', remainingMs: 2000 });
+    assert.equal(state.get().hold.remainingMs, 30000); assert.equal(state.get().hold.releaseBehavior, 'mute');
     assert.ok(!JSON.stringify(state.get()).includes('synthetic-secret'));
     assert.equal(await readFile(join(directory, 'level'), 'utf8'), '0.2 1');
     if (process.platform !== 'win32') {

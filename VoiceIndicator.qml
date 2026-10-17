@@ -6,6 +6,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Hyprland
 import QtQuick.Window
 import Quickshell
 import Quickshell.Io
@@ -20,6 +21,7 @@ BarWidget {
   moduleName: "community.openclaw-voice"
   property string voiceInstance: setting("voiceInstance", "default")
   property string voiceControl: setting("voiceControl", "")
+  property bool holdShortcutEnabled: setting("holdShortcutEnabled", false)
   readonly property string voiceBasename: Instance.basename(voiceInstance)
   readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
   readonly property string controlPath: Instance.controlPath(voiceInstance, voiceControl, Quickshell.env("HOME"))
@@ -66,6 +68,51 @@ BarWidget {
   property alias voiceControls: controlsView
   property alias answerPanel: answerView
   property alias audioPanel: audioView
+  property alias holdPanel: holdView
+  property alias holdShortcut: holdShortcutLoader
+  Process {
+    id: holdPulse
+    property string operation: "hold-start"
+    property string token: ""
+    command: [root.controlPath, operation, token]
+    onExited: (exitCode, exitStatus) => { if (exitCode !== 0) holdView.release() }
+  }
+  Process {
+    id: holdRelease
+    property string token: ""
+    command: [root.controlPath, "hold-release", token]
+  }
+  HoldPanel {
+    id: holdView
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    voiceState: root.controlsState
+    configured: root.configured
+    current: root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt < 20 && root.status !== "stopped"
+    busy: control.running || holdPulse.running || holdRelease.running
+    onCommand: (operation, token) => {
+      if (!root.configured) return;
+      if (operation === "hold-release") {
+        if (!holdRelease.running) { holdRelease.token = token; holdRelease.running = true }
+      } else if (!holdPulse.running && ["hold-start", "hold-renew"].includes(operation)) {
+        holdPulse.operation = operation; holdPulse.token = token; holdPulse.running = true;
+      }
+    }
+    onEndVoice: root.runControl("stop")
+    WlrLayershell.namespace: root.voiceBasename + "-hold"
+  }
+  Loader {
+    id: holdShortcutLoader
+    active: root.configured && root.holdShortcutEnabled
+    onActiveChanged: if (!active) holdView.release("shortcut")
+    sourceComponent: GlobalShortcut {
+      appid: root.voiceBasename
+      name: "hold-to-talk"
+      description: "Hold to talk to OpenClaw"
+      onPressed: holdView.begin("shortcut")
+      onReleased: holdView.release("shortcut")
+      Component.onDestruction: holdView.release("shortcut")
+    }
+  }
   AudioPanel {
     id: audioView
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
@@ -95,8 +142,9 @@ BarWidget {
     busy: control.running
     onExecute: command => root.runControl(command)
     onSelectDestination: id => root.selectDestination(id)
-    onShowAnswer: { controlsView.visible = false; audioView.visible = false; answerView.visible = true }
-    onShowAudio: { controlsView.visible = false; answerView.visible = false; audioView.visible = true }
+    onShowAnswer: { controlsView.visible = false; audioView.visible = false; holdView.visible = false; answerView.visible = true }
+    onShowAudio: { controlsView.visible = false; answerView.visible = false; holdView.visible = false; audioView.visible = true }
+    onShowHold: { controlsView.visible = false; answerView.visible = false; audioView.visible = false; holdView.visible = true }
     WlrLayershell.namespace: root.voiceBasename + "-controls"
   }
 
@@ -104,7 +152,7 @@ BarWidget {
   property string label: ""
   property real updatedAt: 0
   readonly property string activationState: updatedAt === 0 || status === "stopped" ? "Unknown"
-    : status === "checking" ? "Local audio check"
+    : status === "checking" ? "Local audio check" : status === "input-muted" ? "Input muted"
     : status === "standby" ? "Standby" : status === "preparing" ? "Preparing voice" : status === "connecting" ? "Connecting" : status === "stopping" ? "Stopping"
     : ["listening", "thinking", "acting", "confirm"].includes(status) ? "Talk"
     : status === "idle" ? "Off" : "Unavailable"
@@ -180,7 +228,7 @@ BarWidget {
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-             || root.status === "checking" || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
+             || root.status === "input-muted" || root.status === "checking" || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
     tooltipText: "OpenClaw Voice — " + root.activationState + " — " + root.destinationText
       + (root.destination.label ? " · " + root.destination.label : "")
       + (root.destination.target ? " · " + root.destination.target : "") + " — "
@@ -217,7 +265,7 @@ BarWidget {
     }
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
-      if (b === Qt.RightButton) { answerView.visible = false; audioView.visible = false; controlsView.visible = !controlsView.visible }
+      if (b === Qt.RightButton) { answerView.visible = false; audioView.visible = false; holdView.visible = false; controlsView.visible = !controlsView.visible }
       else if (b === Qt.LeftButton) root.toggleVoice()
     }
   }

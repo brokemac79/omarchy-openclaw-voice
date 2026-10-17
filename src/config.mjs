@@ -67,6 +67,9 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
   const stateDir = userPath(env.OPENCLAW_STATE_DIR, openclawHome) || join(openclawHome, '.openclaw');
   const configPath = userPath(options.openclawConfig, openclawHome) || userPath(env.OPENCLAW_CONFIG_PATH, openclawHome) || join(stateDir, 'openclaw.json');
   const openclaw = JSON.parse(await readFile(configPath, 'utf8'));
+  if (options.holdRelease !== undefined && !['mute', 'end'].includes(options.holdRelease)) {
+    throw new Error('holdRelease must be mute or end.');
+  }
   return {
     instance,
     ...resolveGateway(openclaw, env),
@@ -82,5 +85,6 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
     outputDevice: options.outputDevice,
     // Configuring models never arms input; only an explicit control command can.
     wake: options.wake,
+    holdRelease: options.holdRelease || 'mute',
   };
 }

@@ -58,6 +58,10 @@ export async function createState(directory) {
         workStatus: 'unknown', cancelAvailable: false,
         reviewRequired: controls.reviewRequired === true,
         audio: audioState(controls.audio),
+        hold: { mode: controls.hold?.mode === true, held: controls.hold?.held === true, ready: controls.hold?.ready === true,
+          releaseBehavior: controls.hold?.releaseBehavior === 'end' ? 'end' : 'mute',
+          message: String(controls.hold?.message || '').slice(0, 160),
+          remainingMs: Math.max(0, Math.min(30000, Number(controls.hold?.remainingMs) || 0)) },
         destination: controls.destination ? {
           id: String(controls.destination.id || '').slice(0, 32),
           label: String(controls.destination.label || '').slice(0, 64),
