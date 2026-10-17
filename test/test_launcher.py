@@ -9,12 +9,31 @@ import threading
 import time
 import unittest
 import runpy
+import io
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 LAUNCHER = Path(__file__).resolve().parents[1] / 'bin/openclaw-voice'
 
 
 class InstanceLauncherTests(unittest.TestCase):
+    def test_bounded_answer_responses_fit_the_wire_limit_and_oversized_lines_are_rejected(self):
+        module = runpy.run_path(str(LAUNCHER))
+        for text in ('Synthetic 😀 ' * 5000, chr(1) * 65536, 'x' * 1048576):
+            line = (json.dumps({'ok': True, 'answer': {'text': text}}) + '\n').encode()
+            stream = io.StringIO()
+            with patch.dict(os.environ, {'XDG_RUNTIME_DIR': '/tmp/synthetic'}), \
+                    patch.object(sys, 'argv', [str(LAUNCHER), 'quiet']), \
+                    patch('socket.AF_UNIX', 1, create=True), patch('socket.socket') as sock, \
+                    patch('subprocess.run'), redirect_stdout(stream):
+                sock.return_value.__enter__.return_value.makefile.return_value.__enter__.return_value = io.BytesIO(line)
+                if len(line) > 1048576:
+                    with self.assertRaises(SystemExit):
+                        module['main']()
+                else:
+                    module['main']()
+                    self.assertEqual(json.loads(stream.getvalue())['answer']['text'], text)
+
     def test_in_call_controls_never_start_or_stop_a_service_on_failed_delivery(self):
         module = runpy.run_path(str(LAUNCHER))
         for mode in ('mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination'):
