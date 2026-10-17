@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add an explicitly opened answer reader with scrolling, text selection,
+  copying, text sizing and deliberate HTTP/HTTPS link actions. Keep a bounded
+  beginning of received replies separately from compact caption tails, with
+  explicit partial/overflow state and retention after End or audio failure.
+  Dismissal, a new call and companion shutdown clear this volatile text.
+
 ## 0.5.0 - 16 October 2026
 
 - Add opt-in local wake-to-conversation activation with separately provisioned

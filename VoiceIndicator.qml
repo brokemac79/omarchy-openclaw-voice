@@ -55,6 +55,15 @@ BarWidget {
   }
   property var controlsState: ({})
   property alias voiceControls: controlsView
+  property alias answerPanel: answerView
+  AnswerPanel {
+    id: answerView
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    voiceState: root.controlsState
+    current: root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt < 20 && root.status !== "stopped"
+    onLinkRequested: url => Qt.openUrlExternally(url)
+    WlrLayershell.namespace: root.voiceBasename + "-answer"
+  }
   VoiceControls {
     id: controlsView
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
@@ -64,6 +73,7 @@ BarWidget {
     busy: control.running
     onExecute: command => root.runControl(command)
     onSelectDestination: id => root.selectDestination(id)
+    onShowAnswer: { controlsView.visible = false; answerView.visible = true }
     WlrLayershell.namespace: root.voiceBasename + "-controls"
   }
 

@@ -12,6 +12,7 @@ PanelWindow {
   property bool busy: false
   signal execute(string command)
   signal selectDestination(string id)
+  signal showAnswer()
   visible: false
   anchors { top: true; right: true }
   margins { top: 52; right: 18 }
@@ -133,6 +134,15 @@ PanelWindow {
           textFormat: Text.PlainText; wrapMode: Text.WordWrap
           maximumLineCount: 6; elide: Text.ElideRight
           color: Color.notifications.text; font.pixelSize: 13
+        }
+        Rectangle {
+          width: 154; height: 40; radius: 7
+          visible: root.current && !!(root.voiceState.answer && root.voiceState.answer.text)
+          color: Color.notifications.background; border.color: Color.notifications.border
+          Text { anchors.centerIn: parent; text: "Open answer"; color: Color.notifications.text; font.pixelSize: 13 }
+          Accessible.role: Accessible.Button; Accessible.name: "Open answer"
+          Accessible.onPressAction: root.showAnswer()
+          MouseArea { anchors.fill: parent; onClicked: root.showAnswer() }
         }
         Row {
           spacing: 18

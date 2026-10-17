@@ -33,6 +33,10 @@ explicit unknown outcomes. The controls can scroll to retain access on small scr
 The bar and conversation surfaces also show observed agent/node context and
 unavailable/stale state; selection never grants permissions.
 
+`AnswerPanel.qml` and `AnswerText.js` add the explicitly opened answer reader,
+literal selectable text, deliberate clipboard actions and filtered web links.
+The OMA-derived bar owns this additional surface; its existing notices remain.
+
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision
 `692464e6f8e00e6416eeb050fa7916c129ea3ac4` of

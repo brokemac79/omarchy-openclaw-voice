@@ -67,3 +67,9 @@ For destination routing, also run `python3 test/qml_destinations.py` in Omarchy.
 Use synthetic discovery, fake SDK/media and private disposable selection files.
 Check active-call/review guards and old-call event isolation before claiming
 switching coverage; see [destination contracts](docs/DESTINATIONS.md).
+
+For the answer reader, run `python3 test/qml_answers.py` in Omarchy with
+`wl-copy`, `wl-paste`, `wtype` and QtTest available. It uses synthetic owner
+events, actual components, pointer/simulated touch and keyboard/clipboard checks.
+Clipboard data is restored from memory, never saved or logged. No microphone,
+provider, external URL or real control is invoked; see [answer limits](docs/ANSWERS.md).

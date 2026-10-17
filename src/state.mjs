@@ -1,7 +1,7 @@
 import { mkdir, chmod, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { level } from './policy.mjs';
-import { TRANSCRIPT_LIMIT } from './transcript.mjs';
+import { TRANSCRIPT_LIMIT, answerPrefix } from './transcript.mjs';
 import { ACTION_CARD_LIMIT } from './action-progress.mjs';
 
 export async function createState(directory) {
@@ -64,6 +64,10 @@ export async function createState(directory) {
         startupStage: typeof controls.startupStage === 'string' ? controls.startupStage.slice(0, 40) : null,
         errorCode: typeof controls.errorCode === 'string' ? controls.errorCode.slice(0, 40) : null,
         recoveryAction: String(controls.recoveryAction || '').slice(0, 240),
+        answer: { text: answerPrefix(controls.answer?.text),
+          truncated: controls.answer?.truncated === true
+            || answerPrefix(controls.answer?.text).length < String(controls.answer?.text || '').length,
+          complete: controls.answer?.complete === true },
         lastResult: String(controls.lastResult || '').slice(-TRANSCRIPT_LIMIT) };
       if (JSON.stringify(state) !== JSON.stringify(next)) {
         state = next; dirty = true;
