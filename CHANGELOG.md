@@ -4,6 +4,7 @@
 
 - Fix native audio shutdown with open control stdin and stop malformed or
   oversized commands safely. Release wake input without a blocking stdin thread.
+  Wait for late worker release before exiting a stopped daemon.
 - Keep continuing hold replies visible in compact captions, return current hold
   state from controls and block replacement audio after an unconfirmed release.
 - Sanitize invalid configuration/origin errors and keep Gateway/provider

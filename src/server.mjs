@@ -187,7 +187,11 @@ async function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true; clearInterval(healthTimer); clearInterval(destinationTimer); clearInterval(audioTimer); clearInterval(holdTimer);
   // systemd also kills the whole control group if a provider cleanup stalls.
-  await audio.stopCheck(); await owner.stop(); await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
+  await audio.stopCheck(); await owner.stop();
+  // A cancelled launch can still be waiting for the worker's ready event.
+  // Let that acquisition close its late candidate before exiting the parent.
+  await owner.startup; await owner.mediaCleanup;
+  await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
 }
 process.on('SIGTERM', () => { void shutdown(); });
 process.on('SIGINT', () => { void shutdown(); });
