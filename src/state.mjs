@@ -48,7 +48,7 @@ export async function createState(directory) {
     get: () => ({ ...state }),
     set(status, text, transcript = {}, controls = {}) {
       const caption = String(text || '').slice(0, 240);
-      const active = ['listening', 'thinking', 'acting', 'confirm'].includes(status);
+      const active = ['listening', 'input-muted', 'thinking', 'acting', 'confirm'].includes(status);
       const user = active ? String(transcript.user || '').slice(-TRANSCRIPT_LIMIT) : '';
       const assistant = active ? String(transcript.assistant || '').slice(-TRANSCRIPT_LIMIT) : '';
       const next = { status, text: caption, user, assistant,

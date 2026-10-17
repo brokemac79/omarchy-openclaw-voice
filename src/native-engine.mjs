@@ -40,7 +40,11 @@ export async function launchEngine(config, session, { syntheticSilence = false,
   const args = [fileURLToPath(new URL('../native/audio.py', import.meta.url))];
   if (syntheticSilence) args.push('--synthetic-silence');
   const worker = spawnWorker(config.python, args, { stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1' } });
+    env: { ...Object.fromEntries([
+      'PATH', 'HOME', 'XDG_RUNTIME_DIR', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME',
+      'PULSE_SERVER', 'PULSE_COOKIE', 'LANG', 'LC_ALL', 'LC_CTYPE', 'PYTHONPATH', 'LD_LIBRARY_PATH',
+      'GI_TYPELIB_PATH', 'GST_PLUGIN_PATH', 'GST_PLUGIN_SYSTEM_PATH', 'GST_REGISTRY',
+    ].filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])), PYTHONUNBUFFERED: '1' } });
   let closed = false, failed = false, ready = false, started = false, offered = false, answered = false;
   let desiredMute = false, desiredQuiet = false, buffer = '', resolveReady, rejectReady, closePromise;
   const aborter = new AbortController();

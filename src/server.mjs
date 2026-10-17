@@ -36,9 +36,18 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
   switch (command) {
     case 'status': return status();
     case 'destinations': await destinations.refresh(); return destinations.snapshot();
-    case 'hold-start': return { ...status(), holdAccepted: hold.press(invocation.holdToken) };
-    case 'hold-renew': return { ...status(), holdAccepted: hold.renew(invocation.holdToken) };
-    case 'hold-release': return { ...status(), holdAccepted: hold.release(invocation.holdToken) };
+    case 'hold-start': {
+      const holdAccepted = hold.press(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
+    case 'hold-renew': {
+      const holdAccepted = hold.renew(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
+    case 'hold-release': {
+      const holdAccepted = hold.release(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
     case 'audio-devices': audio.message = ''; await audio.refresh(); return status();
     case 'select-audio-device':
       try { await audio.select(invocation.deviceKind, invocation.deviceId); return { ...status(), audioSelectionChanged: true }; }

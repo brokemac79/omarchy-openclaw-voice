@@ -27,6 +27,29 @@ try:
         control = root / "fake control 'literal;args'"
         control.write_text('#!/usr/bin/python3\nimport json,sys\nfrom pathlib import Path\nwith Path(' + repr(str(receipt)) + ').open("a") as out: out.write(json.dumps(sys.argv[1:])+"\\n")\n')
         control.chmod(0o700)
+        script = '''
+import { EngineOwner } from OWNER;
+import { HoldInput } from HOLD;
+import { createState } from STATE;
+const native = await createState(RUNTIME);
+let hold;
+const owner = new EngineOwner({native,session:{close:async()=>{}},getHold:()=>hold?.snapshot(),
+ launch:async()=>({start:async()=>{},close:async()=>{},holdInput(){}})});
+hold = new HoldInput({owner});
+owner.render(); const states=[native.get()];
+const token='a'.repeat(16); hold.press(token); await owner.startup;
+owner.talk({type:'session.ready'});
+owner.telemetry({active:true,captureReady:true,muted:true}); hold.tick();
+owner.telemetry({active:true,captureReady:true,muted:false}); states.push(native.get());
+hold.release(token); owner.telemetry({active:true,captureReady:true,muted:true,output:0.5});
+owner.talk({type:'output.text.done',seq:1,payload:{text:'Synthetic reply after release.'}});
+states.push(native.get()); await owner.stop(); await native.close(); console.log(JSON.stringify(states));
+'''.replace('OWNER', json.dumps((source / 'src/engine-owner.mjs').as_uri())).replace(
+            'HOLD', json.dumps((source / 'src/hold-input.mjs').as_uri())).replace(
+            'STATE', json.dumps((source / 'src/state.mjs').as_uri())).replace('RUNTIME', json.dumps(str(runtime)))
+        generated = subprocess.run(['node', '--input-type=module', '-e', script],
+                                   check=True, capture_output=True, text=True, timeout=10)
+        states = json.loads(generated.stdout)
         qml = '''import QtQuick
 import QtTest as Test
 import Quickshell
@@ -51,6 +74,11 @@ ShellRoot {
   }
   if(phase===3&&state.fixtureIndex===2){
    if(panel.held||indicator.activationState!=="Input muted")throw Error("Keyboard release did not clear press");
+   if(indicator.conversation.replyWords!=="Synthetic reply after release."||!indicator.conversation.conversationVisible){
+    if(++waits<10)return;
+    throw Error("Continuing reply captions hidden after hold release");
+   }
+   waits=0;
    input.touchEvent(panel.holdButton).press(0,panel.holdButton,40,40).commit();
    if(!panel.held)throw Error("Touch press did not begin hold");phase=4;return;
   }
@@ -83,7 +111,7 @@ ShellRoot {
  }}
 }'''.replace('NAME', json.dumps(name)).replace('CONTROL', json.dumps(str(control)))
         (root / 'shell.qml').write_text(qml)
-        runtime.mkdir(mode=0o700)
+        runtime.mkdir(mode=0o700, exist_ok=True)
         (runtime / 'level').write_text('0 0')
         log = root / 'renderer.log'
 
@@ -91,11 +119,7 @@ ShellRoot {
             return [json.loads(line) for line in receipt.read_text().splitlines()] if receipt.exists() else []
 
         def publish(index):
-            state = {'status': 'idle' if index == 0 else 'listening' if index == 1 else 'input-muted',
-                     'text': 'Synthetic hold state', 'updated': time.time(), 'fixtureIndex': index,
-                     'callRequested': index != 0, 'inputMuted': index != 1, 'reviewRequired': False,
-                     'hold': {'mode': index != 0, 'held': index == 1, 'ready': index == 1, 'releaseBehavior': 'mute'},
-                     'audio': {'occupied': False}}
+            state = {**states[index], 'updated': time.time(), 'fixtureIndex': index}
             temp = runtime / 'state.json.tmp'
             temp.write_text(json.dumps(state)); temp.replace(runtime / 'state.json')
 
@@ -119,7 +143,10 @@ ShellRoot {
             keyboard.wait(timeout=4)
             wait_for(lambda: any(row[0] == 'hold-release' for row in commands()))
             publish(2)
-            process.wait(timeout=15)
+            try:
+                process.wait(timeout=15)
+            except subprocess.TimeoutExpired as error:
+                raise RuntimeError('Hold QML did not finish: ' + log.read_text()) from error
         output = log.read_text()
         if process.returncode or 'HOLD_QML_PASS' not in output or any(word in output for word in ('ReferenceError', 'TypeError', 'Failed to load configuration', 'Binding loop')):
             raise RuntimeError(output)
@@ -127,7 +154,7 @@ ShellRoot {
         releases = [row[1] for row in commands() if row[0] == 'hold-release']
         assert len(starts) >= 6 and len(starts) == len(set(starts)) and set(starts) <= set(releases), commands()
         assert all(len(row) == 2 and row[0] in ('hold-start', 'hold-renew', 'hold-release') for row in commands())
-        print('PASS actual Omarchy hold controls: real keyboard, simulated touch, cancel/focus/Close release, opt-in shortcut events, literal tokens, readiness, small layout and mode/review/stale guards; fake controls only.')
+        print('PASS actual Omarchy hold controls: real keyboard, simulated touch, cancel/focus/Close release, opt-in shortcut events, literal tokens, readiness, continuing reply captions through real owner/state, small layout and mode/review/stale guards; fake controls only.')
 finally:
     if process and process.poll() is None:
         process.terminate(); process.wait(timeout=5)

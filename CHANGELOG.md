@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fix native audio shutdown with open control stdin and stop malformed or
+  oversized commands safely. Release wake input without a blocking stdin thread.
+- Keep continuing hold replies visible in compact captions, return current hold
+  state from controls and block replacement audio after an unconfirmed release.
+- Sanitize invalid configuration/origin errors and keep Gateway/provider
+  credential environment variables out of the native audio process.
+
 ## 0.6.0 - 17 October 2026
 
 - Add explicit touch/keyboard hold-to-talk with verified readiness, independent

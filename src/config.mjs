@@ -5,6 +5,17 @@ import { validateGateway } from './policy.mjs';
 import { resolveInstance } from './instance.mjs';
 import { destinationPresets } from './destinations.mjs';
 
+async function configuration(path, name) {
+  const text = await readFile(path, 'utf8');
+  let value;
+  try { value = JSON.parse(text); }
+  catch { throw new Error(`${name} configuration is invalid JSON.`); }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${name} configuration must be a JSON object.`);
+  }
+  return value;
+}
+
 function credential(value, env, field, secrets) {
   if (value === undefined || value === null || value === '') return undefined;
   // Resolve only environment references here; never execute secret providers.
@@ -60,13 +71,13 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
   const instance = resolveInstance(env);
   const configHome = env.XDG_CONFIG_HOME || join(home, '.config');
   let options = {};
-  try { options = JSON.parse(await readFile(join(configHome, instance.basename, 'config.json'), 'utf8')); }
+  try { options = await configuration(join(configHome, instance.basename, 'config.json'), 'Companion'); }
   catch (e) { if (e.code !== 'ENOENT') throw e; }
   const userPath = (value, baseHome) => value?.trim() ? resolve(value.trim().replace(/^~(?=$|[\\/])/, () => baseHome)) : undefined;
   const openclawHome = userPath(env.OPENCLAW_HOME, home) || home;
   const stateDir = userPath(env.OPENCLAW_STATE_DIR, openclawHome) || join(openclawHome, '.openclaw');
   const configPath = userPath(options.openclawConfig, openclawHome) || userPath(env.OPENCLAW_CONFIG_PATH, openclawHome) || join(stateDir, 'openclaw.json');
-  const openclaw = JSON.parse(await readFile(configPath, 'utf8'));
+  const openclaw = await configuration(configPath, 'OpenClaw');
   if (options.holdRelease !== undefined && !['mute', 'end'].includes(options.holdRelease)) {
     throw new Error('holdRelease must be mute or end.');
   }
