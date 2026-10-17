@@ -40,6 +40,16 @@ list allows only bounded HTTP/HTTPS URLs without embedded credentials or control
 characters, opened through Qt only on explicit activation. It adds no HTML or
 code execution. See [answer limits](docs/ANSWERS.md).
 
+Audio setup uses read-only bounded local discovery and private device preferences.
+Device changes, voice/wake ownership and the explicit local test tone are mutually
+exclusive. The tone path has no input, SDK, speech provider or recordings, and is
+bounded to two seconds with Stop/Close/EOF/signal cleanup. Missing or stale devices
+cannot start audio; observed binding changes end local ownership without restart.
+PulseAudio elements receive pinned names and request PipeWire no-move/fallback/
+reconnect properties. Device identities stay outside general diagnostics; no
+desktop defaults, permissions or Gateway approvals are changed. See
+[audio binding and physical-test limits](docs/AUDIO-DEVICES.md).
+
 Action cards confirm transcription only, then report unknown outcomes. Provider
 replies and tool-shaped payloads cannot establish host success or cancellation.
 Their correlation ledger and visible cards are bounded and volatile; they add

@@ -37,6 +37,10 @@ unavailable/stale state; selection never grants permissions.
 literal selectable text, deliberate clipboard actions and filtered web links.
 The OMA-derived bar owns this additional surface; its existing notices remain.
 
+`AudioPanel.qml` adds explicit local device selection and the test-tone controls.
+Its discovery, private preferences and generated-tone worker are integration code;
+the OMA-derived bar/orb retain their existing notices and ownership model.
+
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision
 `692464e6f8e00e6416eeb050fa7916c129ea3ac4` of

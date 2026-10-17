@@ -1,5 +1,8 @@
 // Closed, local presentation vocabulary. Never display an upstream error message.
 const errors = {
+  audio_busy: ['Audio is in use', 'End voice or standby and stop the local audio check before changing devices or starting another audio owner.'],
+  audio_device_unavailable: ['Selected audio device unavailable', 'Open Audio setup, refresh devices and explicitly select an available microphone and speaker.'],
+  audio_selection_invalid: ['Audio selection needs attention', 'Refresh Audio setup and select valid input and output devices.'],
   destination_unavailable: ['Voice destination unavailable', 'Refresh destinations and check the configured agent, conversation and node before starting voice.'],
   destination_switch_blocked: ['Cannot switch voice destination yet', 'End voice, review any unknown outcomes and dismiss results before selecting another destination.'],
   gateway_unavailable: ['Gateway unavailable', 'Check that your configured Gateway is running and reachable, then try again.'],

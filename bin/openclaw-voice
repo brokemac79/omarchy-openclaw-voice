@@ -28,11 +28,16 @@ def main():
         mode = 'toggle'
     if mode == 'end-voice':
         mode = 'stop'
-    if mode not in {'toggle', 'stop', 'mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination', 'status', 'preflight', 'standby-once', 'standby-conversation'}:
-        raise SystemExit('Usage: openclaw-voice [toggle|stop|end-voice|mute|quiet|resume-speech|cancel-request|dismiss-result|diagnostics|destinations|select-destination PRESET_ID|status|preflight|standby-once|standby-conversation]')
+    audio_modes = {'audio-devices', 'select-audio-device', 'audio-speaker-check', 'audio-stop-check'}
+    if mode not in {'toggle', 'stop', 'mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination', 'status', 'preflight', 'standby-once', 'standby-conversation'} | audio_modes:
+        raise SystemExit('Usage: openclaw-voice [toggle|stop|end-voice|mute|quiet|resume-speech|cancel-request|dismiss-result|diagnostics|destinations|select-destination PRESET_ID|status|preflight|standby-once|standby-conversation|audio-devices|select-audio-device input|output DEVICE_ID|audio-speaker-check|audio-stop-check]')
     destination_id = sys.argv[2] if mode == 'select-destination' and len(sys.argv) == 3 else None
     if mode == 'select-destination' and (not destination_id or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,31}', destination_id)):
         raise SystemExit('Usage: openclaw-voice select-destination PRESET_ID')
+    device_kind = sys.argv[2] if mode == 'select-audio-device' and len(sys.argv) == 4 else None
+    device_id = sys.argv[3] if mode == 'select-audio-device' and len(sys.argv) == 4 else None
+    if mode == 'select-audio-device' and (device_kind not in {'input', 'output'} or not re.fullmatch(r'default|[a-f0-9]{16}', device_id or '')):
+        raise SystemExit('Usage: openclaw-voice select-audio-device input|output DEVICE_ID')
     runtime = os.environ.get('XDG_RUNTIME_DIR')
     if not runtime:
         raise SystemExit('Run OpenClaw Voice inside your desktop session.')
@@ -48,6 +53,8 @@ def main():
                 payload['invokedAtMs'] = invoked_at_ms
             if command == 'select-destination':
                 payload['destinationId'] = destination_id
+            if command == 'select-audio-device':
+                payload.update(deviceKind=device_kind, deviceId=device_id)
             client.sendall((json.dumps(payload) + '\n').encode())
             with client.makefile('rb') as response:
                 # The bounded reply reader can contain escaped Unicode/control
@@ -60,6 +67,10 @@ def main():
                 raise RuntimeError('Voice command failed.')
             if command == 'select-destination' and data.get('selectionChanged') is not True:
                 raise RuntimeError('Destination selection was refused.')
+            if command == 'select-audio-device' and data.get('audioSelectionChanged') is not True:
+                raise RuntimeError('Audio selection was refused.')
+            if command == 'audio-speaker-check' and data.get('audioCheckStarted') is not True:
+                raise RuntimeError('Local audio check was refused.')
             return data
 
 
@@ -73,7 +84,7 @@ def main():
                 # A manually started daemon may be outside systemd's control.
                 # Do not claim its microphone is off without a control acknowledgment.
                 raise RuntimeError('Stopped the systemd service; could not verify another daemon.')
-        elif mode in {'mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination'}:
+        elif mode in {'mute', 'quiet', 'resume-speech', 'cancel-request', 'dismiss-result', 'diagnostics', 'destinations', 'select-destination'} | audio_modes:
             # In-call controls cannot start a service or reopen a microphone.
             result = request(mode)
         else:

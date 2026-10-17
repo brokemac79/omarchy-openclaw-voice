@@ -75,6 +75,7 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
     sessionKey: options.sessionKey || 'agent:main:main',
     destinations: destinationPresets(options),
     selectionPath: join(configHome, instance.basename, 'destination.json'),
+    audioSelectionPath: join(configHome, instance.basename, 'audio.json'),
     voice: options.voice || 'cove',
     // Stable PipeWire/PulseAudio device names, stored outside the checkout.
     inputDevice: options.inputDevice,

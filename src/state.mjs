@@ -4,6 +4,21 @@ import { level } from './policy.mjs';
 import { TRANSCRIPT_LIMIT, answerPrefix } from './transcript.mjs';
 import { ACTION_CARD_LIMIT } from './action-progress.mjs';
 
+function audioState(value) {
+  if (!value) return null;
+  const choices = rows => Array.isArray(rows) ? rows.slice(0, 66).map(row => ({
+    id: String(row.id || '').slice(0, 16), label: String(row.label || '').slice(0, 96),
+    detail: String(row.detail || '').slice(0, 512), available: row.available === true })) : [];
+  return { state: value.state === 'ready' ? 'ready' : 'stale', message: String(value.message || '').slice(0, 240),
+    canSelect: value.canSelect === true, occupied: value.occupied === true, releaseUnconfirmed: value.releaseUnconfirmed === true,
+    inputs: choices(value.inputs), outputs: choices(value.outputs),
+    inputId: String(value.inputId || '').slice(0, 16), outputId: String(value.outputId || '').slice(0, 16),
+    inputAvailable: value.inputAvailable === true, outputAvailable: value.outputAvailable === true,
+    check: { phase: ['idle', 'selecting', 'starting', 'checking', 'stopping'].includes(value.check?.phase) ? value.check.phase : 'idle',
+      mode: value.check?.mode === 'speaker' ? 'speaker' : '',
+      remainingMs: Math.max(0, Math.min(2000, Number(value.check?.remainingMs) || 0)) } };
+}
+
 export async function createState(directory) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
@@ -42,6 +57,7 @@ export async function createState(directory) {
         speechQuiet: controls.speechQuiet === true, speechQuietRequested: controls.speechQuietRequested === true,
         workStatus: 'unknown', cancelAvailable: false,
         reviewRequired: controls.reviewRequired === true,
+        audio: audioState(controls.audio),
         destination: controls.destination ? {
           id: String(controls.destination.id || '').slice(0, 32),
           label: String(controls.destination.label || '').slice(0, 64),

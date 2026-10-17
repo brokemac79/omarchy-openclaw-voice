@@ -56,13 +56,28 @@ test('real servers isolate controls and clear hello metadata without starting au
       }
       export async function startGatewayClientWhenEventLoopReady(client){await client.start();}`);
     const config = join(root, 'gateway.json');
+    // Read-only inventory is synthetic too; never depend on host devices.
+    await writeFile(join(root, 'pactl'), `#!/usr/bin/python3
+import json,sys
+arg=sys.argv[-1]
+print(json.dumps([{'name':'fixture-mic','description':'Synthetic microphone','monitor_of_sink':None}] if arg=='sources'
+ else [{'name':'fixture-speaker','description':'Synthetic speaker'}] if arg=='sinks'
+ else {'default_source_name':'fixture-mic','default_sink_name':'fixture-speaker'}))
+`, { mode: 0o700 });
     const detector = join(root, 'fake-python');
     const detectorReceipt = join(root, 'detector-starts');
+    const toneReceipt = join(root, 'tone-starts');
     await writeFile(detector, `#!/usr/bin/python3
 import json, pathlib, select, sys
-if not sys.argv[1].endswith('/native/wake.py'): raise SystemExit('No Talk worker allowed')
 settings = json.loads(sys.stdin.readline())
 if 'gateway' in json.dumps(settings) or 'synthetic-secret' in json.dumps(settings): raise SystemExit('Unexpected credentials')
+if sys.argv[1].endswith('/native/audio_check.py'):
+ if settings != {'mode':'speaker','device':'fixture-speaker'}: raise SystemExit('Speaker-only fixture')
+ with pathlib.Path(${JSON.stringify(toneReceipt)}).open('a') as receipt: receipt.write('tone\\n')
+ print('{"event":"ready","synthetic":false}',flush=True)
+ while not select.select([sys.stdin],[],[],0.1)[0]: pass
+ raise SystemExit(0)
+if not sys.argv[1].endswith('/native/wake.py'): raise SystemExit('No Talk worker allowed')
 with pathlib.Path(${JSON.stringify(detectorReceipt)}).open('a') as receipt: receipt.write('start\\n')
 print('{"event":"ready"}', flush=True)
 while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat"}', flush=True)
@@ -78,7 +93,7 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
       const event = join(root, `${name}.json`); events.push(event);
       await publishEvent(event, { auth: { method: 'device-token', role: 'operator', deviceToken: 'synthetic-secret' }, server: { connId: name } });
       const child = spawn(process.execPath, [fileURLToPath(new URL('../src/server.mjs', import.meta.url))], {
-        env: { PATH: process.env.PATH, HOME: root, XDG_RUNTIME_DIR: root, XDG_CONFIG_HOME: join(root, 'config'),
+        env: { PATH: root + ':' + process.env.PATH, HOME: root, XDG_RUNTIME_DIR: root, XDG_CONFIG_HOME: join(root, 'config'),
           OPENCLAW_VOICE_INSTANCE: name, FAKE_EVENT: event }, stdio: 'pipe',
       });
       children.push(child); let output = '';
@@ -112,6 +127,21 @@ while not select.select([sys.stdin], [], [], 0.1)[0]: print('{"event":"heartbeat
     assert.equal(diagnostics.ready, false); assert.equal(diagnostics.gatewayConnected, true);
     assert.equal(diagnostics.agentWorkMs, null);
     assert.ok(!/synthetic-secret|assistant|gatewayConnection|test-build|voiceSessionId|destination|Synthetic secondary/.test(JSON.stringify(diagnostics)));
+    const audio = await request(sockets[1], 'audio-devices');
+    assert.equal(audio.audio.inputAvailable, true); assert.equal(audio.audio.outputAvailable, true);
+    const microphone = audio.audio.inputs[1];
+    assert.equal((await request(sockets[1], 'select-audio-device', {deviceKind:'input',deviceId:microphone.id})).audioSelectionChanged, true);
+    assert.equal((await request(sockets[0], 'audio-devices')).audio.inputId, 'default');
+    const tone = await request(sockets[1], 'audio-speaker-check');
+    assert.equal(tone.audioCheckStarted, true); assert.equal(tone.requested, false); assert.equal(tone.status, 'checking');
+    assert.equal((await request(sockets[1], 'toggle')).startFailure.code, 'audio_busy');
+    assert.equal((await request(sockets[1], 'select-audio-device', {deviceKind:'output',deviceId:'default'})).audioSelectionChanged, false);
+    assert.equal((await request(sockets[1], 'select-destination', {destinationId:'configured'})).selectionChanged, false);
+    assert.equal((await request(sockets[1], 'standby-conversation')).ok, false);
+    assert.equal((await request(sockets[1], 'audio-stop-check')).audio.occupied, false);
+    assert.equal((await readFile(toneReceipt, 'utf8')), 'tone\n');
+    assert.deepEqual(JSON.parse(await readFile(join(root,'config/openclaw-voice-test/audio.json'))), {version:1,input:'fixture-mic',output:null});
+    assert.ok(!/fixture-mic|fixture-speaker|audio/.test(JSON.stringify(await request(sockets[1], 'diagnostics'))));
     await assert.rejects(readFile(detectorReceipt), { code: 'ENOENT' });
     assert.equal((await request(sockets[1], 'standby-once')).ok, false);
     assert.equal((await request(sockets[0], 'standby-conversation')).ok, false);
