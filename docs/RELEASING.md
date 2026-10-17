@@ -10,13 +10,21 @@ marketplace verification.
 
 The permanent plugin ID is `community.openclaw-voice`. The root bar package
 owns its conversation/status children. The companion requires explicit setup.
-Package, manifest and client versions are `0.5.0`. Later releases must update
+Package, manifest and client versions are `0.6.0`. Later releases must update
 them together and use a new tag. Do not move a published release tag.
 
-Version 0.5.0 remains an owner-authorized preview, like earlier tags. Release
-notes must state exact-archive automated results and the missing live/desktop
+Versions 0.5.0 and 0.6.0 are owner-authorized full releases. Release
+notes must still state exact-archive automated results and the missing live/desktop
 qualification; older human trials do not certify a newer tag. The unresolved
 request-completion contract and automatic return-to-standby remain explicit.
+
+Version 0.6.0 adds the expandable received-answer reader, explicit audio-device
+selection with a local output-only test tone, and touch/keyboard hold-to-talk.
+Release can mute transmission while replies continue (default), or end the whole
+voice session. Capture remains open in the default input-muted state. Publish
+it as a full release, then perform the separately owner-authorized backed-up
+Omarchy upgrade. Record actual upgrade results without inferring a human
+conversation or a fresh graphical/plugin-manager lifecycle from automated checks.
 
 ## Before publication
 

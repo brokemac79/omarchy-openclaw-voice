@@ -4,7 +4,32 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
-## v0.5.0 preview qualification
+## v0.6.0 automated qualification
+
+The merged answer reader, audio setup and hold-to-talk features passed 133 Node
+tests and 38 Python tests on Linux without skips, with all 134 tracked source
+files matching the isolated proof copy. All nine actual Omarchy renderer checks
+passed, including keyboard/touch hold release, audio selection, answer clipboard,
+controls, action observations, destinations, instance isolation, cold start and
+wake states. Generated WebRTC, hold gating, test-tone and wake checks passed with
+fake audio sinks and no physical capture or live provider.
+
+Default hold release mutes transmission while capture remains open and replies
+continue. Private `holdRelease: "end"` instead ends capture/playback. Provider
+speech detection still owns turn boundaries; release is not an exact commit,
+cancellation or completion signal. Global shortcut setup is explicit and off by
+default. See [hold limits](HOLD-TO-TALK.md), [audio limits](AUDIO-DEVICES.md) and
+[received-answer limits](ANSWERS.md).
+
+The exact release archive identity and final qualification are recorded in its
+GitHub release notes. The owner authorized a backed-up upgrade on the existing
+Omarchy machine after publication; that operation is separate from the synthetic
+proofs. No physical hold-latency test, live conversation, fresh enrollment,
+full graphical/plugin-manager lifecycle or released OpenClaw minimum is claimed
+for this tag. Existing Gateway/SDK source compatibility evidence below remains
+bounded to its recorded revisions.
+
+## v0.5.0 automated qualification
 
 The consolidated feature source at `1bef651554b53a8420ee31de40332213d62d5db0`
 passed 106 Node tests and 29 Python tests on Linux, without skips, plus actual

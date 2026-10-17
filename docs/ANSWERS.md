@@ -1,6 +1,6 @@
 # Read a received answer
 
-On main, right-click the bar icon and choose **Open answer** after reply text
+Right-click the bar icon and choose **Open answer** after reply text
 arrives. The reader opens deliberately and takes keyboard focus. Compact speech
 bubbles keep their existing click-through behaviour. Closing the reader, including
 with Escape, does not start, stop or mute audio.

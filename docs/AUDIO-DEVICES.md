@@ -1,6 +1,6 @@
 # Audio devices and a local test tone
 
-On main, right-click the voice bar icon and open **Audio setup**. Choose a
+Right-click the voice bar icon and open **Audio setup**. Choose a
 microphone and a speaker/headphone device from the lists. Each entry includes
 its stable PulseAudio name so duplicate descriptions remain distinguishable.
 Device discovery uses read-only `pactl --format=json` commands against Omarchy's

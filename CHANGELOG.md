@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 - 17 October 2026
+
 - Add explicit touch/keyboard hold-to-talk with verified readiness, independent
   input leases, lost-release recovery and configurable mute-or-End release.
   Default release keeps capture open with transmission muted and replies audible.
@@ -34,7 +36,7 @@
 - Add contributor templates and the project vision; keep privacy publication
   checks and OMA/OpenClaw attribution intact.
 
-This is a preview, with manual companion setup and optional model provisioning.
+This is a full release, with manual companion setup and optional model provisioning.
 Verified host execution/completion/cancellation and recovery of backend results
 that never reached the client remain unsupported. Automatic return to wake
 standby after one request remains disabled pending a correlated completion

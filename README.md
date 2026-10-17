@@ -1,8 +1,10 @@
 # Omarchy OpenClaw Voice
 
-**v0.5.0 - voice controls and destination presets preview.** This release adds
-opt-in local wake activation, verified startup readiness and recovery, independent
-speech/input controls, honest action observations and explicit agent/target presets.
+**v0.6.0 - readable answers, audio setup and hold-to-talk.** This full release adds
+an expandable answer reader, private audio-device selection with a local test
+tone, and keyboard/touch hold controls with configurable release behaviour.
+It retains opt-in wake activation, verified readiness, independent speech/input
+controls, honest action observations and explicit agent/target presets.
 Companion setup and optional wake models remain manual. See [the changelog](CHANGELOG.md)
 and [compatibility and limits](docs/COMPATIBILITY.md).
 The marketplace lists this plugin with manual companion setup.
@@ -198,11 +200,11 @@ Default dependency locations match an OpenClaw Node installation under
 `openclawConfig`, `inputDevice` and `outputDevice` are optional. The latter two
 are stable PulseAudio device names from `pactl list short sources` and
 `pactl list short sinks`. The defaults use the system microphone and speakers.
-On main, **Audio setup** in the bar's voice controls provides device selection
+**Audio setup** in the bar's voice controls provides device selection
 without editing JSON, plus an explicit two-second local test tone. Saved private
 preferences take precedence over those configuration defaults. Read-only JSON
 discovery requires `pactl`. See [audio setup and test limits](docs/AUDIO-DEVICES.md).
-On main, **Hold to talk** provides touch and focused Space-key input, with an
+**Hold to talk** provides touch and focused Space-key input, with an
 optional configured global shortcut. `holdRelease` selects input mute with reply
 continuation (default) or End voice on release. Capture remains open while input
 is muted. See [hold controls and timing limits](docs/HOLD-TO-TALK.md).
