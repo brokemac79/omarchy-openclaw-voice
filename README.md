@@ -202,6 +202,10 @@ On main, **Audio setup** in the bar's voice controls provides device selection
 without editing JSON, plus an explicit two-second local test tone. Saved private
 preferences take precedence over those configuration defaults. Read-only JSON
 discovery requires `pactl`. See [audio setup and test limits](docs/AUDIO-DEVICES.md).
+On main, **Hold to talk** provides touch and focused Space-key input, with an
+optional configured global shortcut. `holdRelease` selects input mute with reply
+continuation (default) or End voice on release. Capture remains open while input
+is muted. See [hold controls and timing limits](docs/HOLD-TO-TALK.md).
 If upgrading, replace any old browser device IDs with these native names. This integration
 does not discover or control Sonos or Spotify devices.
 

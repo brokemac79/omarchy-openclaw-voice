@@ -1,5 +1,6 @@
 // Closed, local presentation vocabulary. Never display an upstream error message.
 const errors = {
+  mode_switch_blocked: ['Review voice results before changing mode', 'Review retained text and unknown outcomes, then dismiss results before starting conversation or standby.'],
   audio_busy: ['Audio is in use', 'End voice or standby and stop the local audio check before changing devices or starting another audio owner.'],
   audio_device_unavailable: ['Selected audio device unavailable', 'Open Audio setup, refresh devices and explicitly select an available microphone and speaker.'],
   audio_selection_invalid: ['Audio selection needs attention', 'Refresh Audio setup and select valid input and output devices.'],

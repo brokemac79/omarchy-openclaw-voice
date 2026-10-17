@@ -41,6 +41,9 @@ The OMA-derived bar owns this additional surface; its existing notices remain.
 Its discovery, private preferences and generated-tone worker are integration code;
 the OMA-derived bar/orb retain their existing notices and ownership model.
 
+`HoldPanel.qml` and the input-lease controller/gate add explicit touch and keyboard
+hold controls. The existing OMA-derived surfaces retain their attribution.
+
 The custom bar icon, `openclaw-voice.svg`, adapts
 OpenClaw's lobster favicon from `ui/public/favicon.svg` at revision
 `692464e6f8e00e6416eeb050fa7916c129ea3ac4` of

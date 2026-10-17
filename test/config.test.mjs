@@ -103,5 +103,11 @@ test('isolated OpenClaw state and explicit config paths are read without modifyi
     assert.equal((await loadConfig({ home: directory, env })).gatewayUrl, 'ws://127.0.0.1:19005');
     await writeFile(join(configHome, 'openclaw-voice/config.json'), JSON.stringify({ openclawConfig: join(state, 'openclaw.json') }));
     assert.equal((await loadConfig({ home: directory, env })).gatewayUrl, 'ws://127.0.0.1:19003');
+    assert.equal((await loadConfig({ home: directory, env })).holdRelease, 'mute');
+    for (const holdRelease of ['mute', 'end', 'invalid']) {
+      await writeFile(join(configHome, 'openclaw-voice/config.json'), JSON.stringify({ openclawConfig: join(state, 'openclaw.json'), holdRelease }));
+      if (holdRelease === 'invalid') await assert.rejects(loadConfig({ home: directory, env }), /holdRelease/);
+      else assert.equal((await loadConfig({ home: directory, env })).holdRelease, holdRelease);
+    }
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

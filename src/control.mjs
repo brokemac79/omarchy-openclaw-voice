@@ -45,7 +45,7 @@ export async function listenControl(runtime, dispatch) {
           try {
             const data = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
             const result = await dispatch(data?.command, { invokedAtMs: data?.invokedAtMs, destinationId: data?.destinationId,
-              deviceKind: data?.deviceKind, deviceId: data?.deviceId });
+              deviceKind: data?.deviceKind, deviceId: data?.deviceId, holdToken: data?.holdToken });
             socket.end(JSON.stringify({ ok: true, ...result }) + '\n');
           } catch { socket.end(JSON.stringify({ ok: false, error: 'Voice command failed. Check connection and voice configuration.' }) + '\n'); }
         })();

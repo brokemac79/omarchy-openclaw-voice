@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from native.audio import AudioWorker, GLib, Gst, GstSdp, GstWebRTC, check
 
 
-def prove_media():
+def prove_media(hold=False):
     check()
     loop = GLib.MainLoop()
     worker = AudioWorker(synthetic=True)
@@ -27,6 +27,8 @@ def prove_media():
     rtc = peer.get_by_name('rtc')
     evidence = {'send': False, 'receive': False, 'loss_concealed': False,
                 'quiet': False, 'resumed': False, 'muted': False, 'capture_ready': False}
+    if hold:
+        evidence.update({'reheld': False, 'expired': False, 'late_closed': False})
     failures = []
     phase = ['audio', 0.0]
     latest_received = [-100.0]
@@ -96,6 +98,10 @@ def prove_media():
                     evidence['send'] = True
 
     def inspect():
+        if hold and phase[0] in ('audio', 'quiet', 'resume') and worker.connected and worker.capture_ready:
+            worker.command({'command': 'hold-input', 'token': 'a' * 16, 'enabled': True})
+        if hold and phase[0] == 'reheld':
+            worker.command({'command': 'hold-input', 'token': 'b' * 16, 'enabled': True})
         stats = worker.pipeline.get_by_name('decoder').get_property('stats')
         if stats and stats.get_value('plc-num-samples') > 0:
             evidence['loss_concealed'] = True
@@ -110,12 +116,25 @@ def prove_media():
         elif phase[0] == 'resume' and time.monotonic() - phase[1] > 1 and latest_output[0] > 0.02 and latest_played_peak[0] > 100:
             evidence['resumed'] = True
             phase[:] = ['mute', time.monotonic()]
-            worker.command({'command': 'mute', 'muted': True})
+            worker.command({'command': 'hold-input', 'token': 'a' * 16, 'enabled': False} if hold else {'command': 'mute', 'muted': True})
         elif phase[0] == 'mute' and time.monotonic() - phase[1] > 2:
             if latest_received[0] < -60 and worker.muted and latest_output[0] > 0.02 and not worker.output_muted:
                 evidence['muted'] = True
-                loop.quit()
-                return False
+                if not hold:
+                    loop.quit()
+                    return False
+                phase[:] = ['reheld', time.monotonic()]
+        elif hold and phase[0] == 'reheld' and time.monotonic() - phase[1] > 1 and latest_received[0] > -42:
+            evidence['reheld'] = True
+            phase[:] = ['expiring', time.monotonic()]
+        elif hold and phase[0] == 'expiring' and time.monotonic() - phase[1] > 2 and latest_received[0] < -60 and worker.muted:
+            evidence['expired'] = True
+            worker.command({'command': 'hold-input', 'token': 'b' * 16, 'enabled': True})
+            phase[:] = ['late', time.monotonic()]
+        elif hold and phase[0] == 'late' and time.monotonic() - phase[1] > 1:
+            evidence['late_closed'] = worker.muted and latest_received[0] < -60 and latest_played_peak[0] > 100
+            loop.quit()
+            return False
         return True
 
     worker.emit = output
@@ -123,7 +142,8 @@ def prove_media():
     rtc.connect('pad-added', incoming)
     bus = peer.get_bus(); bus.add_signal_watch(); bus.connect('message', message)
     peer.set_state(Gst.State.PLAYING)
-    worker.start({'muted': False})
+    worker.start({'muted': hold, 'holdMode': hold})
+    assert worker.muted == hold
     assert not worker.capture_ready, 'Capture cannot be ready before the first microphone frame.'
     playback = worker.pipeline.get_by_name('playback')
     playback.set_property('signal-handoffs', True)
@@ -147,6 +167,8 @@ def prove_media():
     assert all(evidence.values()), evidence
     assert worker.pipeline.get_state(Gst.SECOND)[1] == Gst.State.NULL
     print('PASS: native send, receive/loss concealment, output Quiet/resume, independent input mute and release; no physical audio devices.')
+    if hold:
+        print('PASS actual hold input: muted startup, release preserves reply, follow-up, native lease expiry and late-renewal refusal with generated WebRTC audio.')
 
 
 def prove_eof():

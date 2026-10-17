@@ -19,7 +19,8 @@
     "defaults": {
       "voiceInstance": "default",
       "voiceControl": "",
-      "showOrb": false
+      "showOrb": false,
+      "holdShortcutEnabled": false
     },
     "schema": [
       {
@@ -36,6 +37,11 @@
         "key": "showOrb",
         "type": "boolean",
         "label": "Show legacy audio orb"
+      },
+      {
+        "key": "holdShortcutEnabled",
+        "type": "boolean",
+        "label": "Enable configured Hyprland hold-to-talk shortcut"
       }
     ]
   }

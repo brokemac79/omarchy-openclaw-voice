@@ -35,7 +35,7 @@ try:
         for module in ('Commons', 'Ui', 'services'):
             (root / module).symlink_to(Path('/usr/share/omarchy/shell') / module, target_is_directory=True)
         (root / 'plugin').mkdir()
-        for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'AudioPanel.qml', 'AnswerPanel.qml', 'AnswerText.js',
+        for filename in ('VoiceIndicator.qml', 'VoiceControls.qml', 'AudioPanel.qml', 'HoldPanel.qml', 'AnswerPanel.qml', 'AnswerText.js',
                          'DestinationPicker.qml', 'ActionCards.qml', 'VoiceOrb.qml',
                          'TranscriptBubble.qml', 'Instance.js', 'openclaw-voice.svg'):
             shutil.copyfile(source / filename, root / 'plugin' / filename)
@@ -181,6 +181,14 @@ ShellRoot {
             temporary.write_text(json.dumps({**state, 'updated': time.time(), 'fixtureIndex': index, 'clipboardAck': ack}))
             temporary.replace(runtime / 'state.json')
 
+        def expect_clipboard(expected):
+            # QML returns before Wayland has necessarily published ownership.
+            deadline = time.monotonic() + 3
+            while subprocess.check_output(['wl-paste', '--no-newline'], timeout=3) != expected:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('Clipboard did not publish the expected synthetic text.')
+                time.sleep(0.025)
+
         with log.open('w') as stream:
             process = subprocess.Popen(['quickshell', '--path', str(root / 'shell.qml'), '--no-color'],
                                        stdout=stream, stderr=subprocess.STDOUT, text=True)
@@ -191,12 +199,12 @@ ShellRoot {
                     assert subprocess.check_output(['wl-paste', '--no-newline'], timeout=3) == b'synthetic-clipboard-unchanged'
                 if index == 1:
                     wait_for('COPIED_ALL')
-                    assert subprocess.check_output(['wl-paste', '--no-newline'], timeout=3).decode() == state['answer']['text']
+                    expect_clipboard(state['answer']['text'].encode())
                     publish(state, index, 1)
                     wait_for('COPIED_SELECTION')
                     # QML selection indices use UTF-16, including the emoji pair.
                     selected = state['answer']['text'].encode('utf-16-le')[:50].decode('utf-16-le')
-                    assert subprocess.check_output(['wl-paste', '--no-newline'], timeout=3).decode() == selected
+                    expect_clipboard(selected.encode())
                     publish(state, index, 2)
                     wait_for('KEYBOARD_READY')
                     subprocess.run(['wtype', '-M', 'ctrl', '-k', 'a', '-m', 'ctrl', '-M', 'ctrl', '-k', 'c', '-m', 'ctrl'], check=True, timeout=3)

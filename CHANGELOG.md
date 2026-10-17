@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add explicit touch/keyboard hold-to-talk with verified readiness, independent
+  input leases, lost-release recovery and configurable mute-or-End release.
+  Default release keeps capture open with transmission muted and replies audible.
+
 - Add explicit microphone/speaker device selection with private saved preferences
   and a local two-second test tone. Block overlapping audio owners, show missing
   selections, stop on stale or changed bindings and preserve explicit activation.
