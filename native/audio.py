@@ -3,9 +3,9 @@
 import argparse
 import json
 import math
+import os
 import signal
 import sys
-import threading
 import time
 if __package__:
     from .device_binding import bind_device, device_matches
@@ -45,6 +45,7 @@ class AudioWorker:
         self.negotiating = False
         self.devices = {}
         self.hold_gate = None
+        self.command_buffer = bytearray()
 
     def emit(self, event, **data):
         if self.stopping:
@@ -256,23 +257,30 @@ class AudioWorker:
             self.fail('audio-command-failed')
         return False
 
-    def read_commands(self):
+    def read_commands(self, descriptor, condition):
+        if condition & (GLib.IO_HUP | GLib.IO_ERR | GLib.IO_NVAL):
+            return self.stop()
         try:
-            while True:
-                line = sys.stdin.buffer.readline(131073)
-                if not line:
-                    break
-                if len(line) > 131072:
-                    GLib.idle_add(self.fail, 'command-too-large')
-                    return
-                GLib.idle_add(self.command, json.loads(line))
-        except (ValueError, OSError):
-            GLib.idle_add(self.fail, 'invalid-command')
-            return
-        GLib.idle_add(self.stop)
+            chunk = os.read(descriptor, 65536)
+            if not chunk:
+                return self.stop()
+            self.command_buffer.extend(chunk)
+            while b'\n' in self.command_buffer:
+                line, _, rest = self.command_buffer.partition(b'\n')
+                self.command_buffer = rest
+                if len(line) >= 131072:
+                    return self.fail('command-too-large')
+                self.command(json.loads(line))
+                if self.stopping:
+                    return False
+            if len(self.command_buffer) >= 131072:
+                return self.fail('command-too-large')
+        except (ValueError, OSError, RecursionError):
+            return self.fail('invalid-command')
+        return not self.stopping
 
     def run(self):
-        threading.Thread(target=self.read_commands, daemon=True).start()
+        GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR | GLib.IO_NVAL, self.read_commands)
         GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.stop)
         GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.stop)
         self.emit('ready', syntheticSilence=self.synthetic)

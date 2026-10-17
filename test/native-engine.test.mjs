@@ -10,12 +10,28 @@ function fixture() {
   child.stdout = new PassThrough(); child.stderr = new PassThrough();
   child.stdin = new Writable({ write(data, _, cb) { commands.push(JSON.parse(data)); cb(); } });
   child.kill = () => { queueMicrotask(() => child.emit('close', 0)); };
-  let args;
-  const spawnWorker = (_, a) => { args = a; queueMicrotask(() => child.stdout.write('{"event":"ready","syntheticSilence":true}\n')); return child; };
+  let args, environment;
+  const spawnWorker = (_, a, options) => { args = a; environment = options.env; queueMicrotask(() => child.stdout.write('{"event":"ready","syntheticSilence":true}\n')); return child; };
   const session = { grant: { clientSecret: 'synthetic', voiceSessionId: 'test' }, create: async () => {} };
   const config = { python: 'synthetic-python', gatewayUrl: 'wss://example.com' };
-  return { child, commands, session, config, spawnWorker, args: () => args };
+  return { child, commands, session, config, spawnWorker, args: () => args, environment: () => environment };
 }
+
+test('native audio inherits local runtime settings without Gateway or provider credentials', async () => {
+  const keys = ['OPENCLAW_GATEWAY_TOKEN', 'OPENCLAW_GATEWAY_PASSWORD', 'OPENAI_API_KEY'];
+  const previous = new Map(keys.map(key => [key, process.env[key]]));
+  const f = fixture(); let engine;
+  try {
+    for (const key of keys) process.env[key] = 'synthetic-private-credential';
+    engine = await launchEngine(f.config, f.session, { spawnWorker: f.spawnWorker, syntheticSilence: true });
+    for (const key of keys) assert.equal(Object.hasOwn(f.environment(), key), false);
+    assert.equal(f.environment().PYTHONUNBUFFERED, '1');
+    assert.equal(f.environment().PATH, process.env.PATH);
+  } finally {
+    await engine?.close();
+    for (const [key, value] of previous) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  }
+});
 test('synthetic mode is explicit and startup mute cannot be lost while reserving a session', async () => {
   const f = fixture(); let finish;
   f.session.create = () => new Promise(r => { finish = r; });

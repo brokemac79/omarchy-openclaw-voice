@@ -89,7 +89,7 @@ Item {
                               || status === "input-muted" || status === "checking" || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
   readonly property bool awake: active && fresh
   readonly property bool orbVisible: showOrb && awake
-  readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
+  readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm", "input-muted"].includes(status)
   readonly property string statusText: ({
     listening: label.startsWith("Microphone muted") ? "Ready · Input muted" : label.startsWith("Talk ready") ? "Ready · Listening" : "Listening", thinking: "Thinking", acting: "Responding",
     confirm: "Confirmation needed", error: "Voice unavailable",
