@@ -28,3 +28,26 @@ jobs:
           else
             python3 tools/check_public_files.py --history HEAD
           fi
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install native test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            python3-gi python3-numpy gir1.2-gstreamer-1.0 \
+            gir1.2-gst-plugins-base-1.0 gir1.2-gst-plugins-bad-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-nice gstreamer1.0-pulseaudio
+      - name: Check generated media and process lifecycle without physical audio
+        run: |
+          python3 test/native_worker_lifecycle.py
+          python3 test/native_audio.py
+          python3 test/native_hold.py
+          python3 test/native_audio_check.py
+          python3 test/native_wake.py

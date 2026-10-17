@@ -37,6 +37,10 @@ The installed release was left unchanged. These fixes require a later upgrade.
   fragmented requests and 16 oversized frames. Errors stayed fixed and the
   original owner remained reachable afterward.
 
+The hosted workflow now runs the native process, generated WebRTC, hold, tone
+and fake-predictor wake checks as a separate Linux job. They supplement the
+existing Node/Python and publication gates without requiring audio hardware.
+
 ## Service and integration checks
 
 A disposable Linux user with a real user-systemd manager passed preview,
