@@ -6,8 +6,8 @@ import { ActionProgress } from './action-progress.mjs';
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
   constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false,
-    getDestination = () => ({}), onStopped = () => {} }) {
-    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, onStopped });
+    getDestination = () => ({}), getAudio = () => ({}), onStopped = () => {} }) {
+    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, getAudio, onStopped });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.epoch = 0; this.engine = null;
@@ -72,7 +72,7 @@ export class EngineOwner {
         const phrase = this.wakePhrase ? ` · “${this.wakePhrase}”` : '';
         this.phase = 'standby'; this.caption = `Standby: local microphone${phrase} · ${mode === 'one-request' ? 'one request' : 'open conversation'}`;
         this.render();
-      } catch { if (epoch === this.epoch) await this.fail(new VoiceError('wake_unavailable')); }
+      } catch (error) { if (epoch === this.epoch) await this.fail(error, 'wake_unavailable'); }
     })();
     this.startup = work.catch(() => {});
     return work;
@@ -199,6 +199,7 @@ export class EngineOwner {
       speechQuietRequested: this.outputMuted, workStatus: 'unknown',
       cancelAvailable: false, lastResult: this.lastResult,
       answer: this.answer,
+      audio: this.getAudio(),
       ...this.actions.snapshot(),
       reviewRequired: this.reviewRequired, ...this.getDestination(),
       startupStage: this.startupStage, errorCode: this.failure?.code ?? null,
@@ -248,6 +249,13 @@ export class EngineOwner {
     }
   }
   render() {
+    const audio = this.getAudio();
+    if (audio.releaseUnconfirmed || ['starting', 'checking', 'stopping'].includes(audio.check?.phase)) {
+      this.native.set(audio.releaseUnconfirmed ? 'error' : 'checking', audio.releaseUnconfirmed
+        ? 'Audio release unconfirmed. Stop the companion service.' : audio.check.phase === 'stopping' ? 'Releasing local audio check'
+          : 'Local speaker check · Test tone · Microphone off', {}, this.controls());
+      return;
+    }
     const mode = this.requested && this.wakeMode !== 'off'
       ? ` · ${this.wakeMode === 'one-request' ? 'returns to standby' : 'open conversation'}` : '';
     const connecting = this.requested && !this.active;

@@ -7,6 +7,7 @@ import threading
 
 from wake_gate import WakeGate
 from wake_models import load_detector
+from device_binding import bind_device, device_matches
 
 
 def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_frames=None, synthetic_pcm=None):
@@ -45,7 +46,7 @@ def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_fra
     if device and not synthetic:
         if not isinstance(device, str) or len(device) > 512:
             raise ValueError('Invalid input device')
-        pipeline.get_by_name('capture').set_property('device', device)
+        bind_device(pipeline.get_by_name('capture'), device, Gst)
     pending = bytearray()
     processed = 0
     stopping = threading.Event()
@@ -70,6 +71,8 @@ def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_fra
         if not accepting.is_set():
             return Gst.FlowReturn.OK
         try:
+            if not synthetic and device and not device_matches(pipeline.get_by_name('capture'), device):
+                raise ValueError('Input device changed')
             buffer = frame.get_buffer()
             if buffer.get_size() > 16384:
                 raise ValueError('Oversized audio frame')

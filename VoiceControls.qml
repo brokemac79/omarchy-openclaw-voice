@@ -13,6 +13,7 @@ PanelWindow {
   signal execute(string command)
   signal selectDestination(string id)
   signal showAnswer()
+  signal showAudio()
   visible: false
   anchors { top: true; right: true }
   margins { top: 52; right: 18 }
@@ -62,6 +63,14 @@ PanelWindow {
         width: viewport.width
         spacing: 10
         Text { text: "Voice controls"; color: Color.notifications.text; font.pixelSize: 15; font.bold: true }
+        Rectangle {
+          width: 154; height: 40; radius: 7
+          color: Color.notifications.background; border.color: Color.notifications.border
+          Text { anchors.centerIn: parent; text: "Audio setup"; color: Color.notifications.text; font.pixelSize: 13 }
+          Accessible.role: Accessible.Button; Accessible.name: "Audio setup"
+          Accessible.onPressAction: root.showAudio()
+          MouseArea { anchors.fill: parent; onClicked: root.showAudio() }
+        }
         DestinationPicker {
           width: parent.width
           destination: root.current ? root.voiceState.destination || ({}) : ({state:"stale"})

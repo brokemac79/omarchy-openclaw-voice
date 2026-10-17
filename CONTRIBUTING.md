@@ -73,3 +73,9 @@ For the answer reader, run `python3 test/qml_answers.py` in Omarchy with
 events, actual components, pointer/simulated touch and keyboard/clipboard checks.
 Clipboard data is restored from memory, never saved or logged. No microphone,
 provider, external URL or real control is invoked; see [answer limits](docs/ANSWERS.md).
+
+For audio setup, also run `python3 test/native_audio_check.py` with GStreamer
+installed and `python3 test/qml_audio_devices.py` in Omarchy. Use generated tones,
+fake sinks, synthetic inventories and fake controls only. The new test tone has
+no microphone path. Verify binding/ownership, stale discovery, persisted choices,
+Stop/Close and startup cancellation; see [audio limits](docs/AUDIO-DEVICES.md).

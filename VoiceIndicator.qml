@@ -28,7 +28,7 @@ BarWidget {
     runControl("toggle")
   }
   function runControl(command) {
-    if (!configured || control.running || !["toggle", "mute", "quiet", "resume-speech", "stop", "dismiss-result", "destinations"].includes(command)) return
+    if (!configured || control.running || !["toggle", "mute", "quiet", "resume-speech", "stop", "dismiss-result", "destinations", "audio-devices", "audio-speaker-check"].includes(command)) return
     control.operation = command
     control.destinationId = ""
     control.running = true
@@ -36,6 +36,10 @@ BarWidget {
   function selectDestination(id) {
     if (!configured || control.running || !/^[a-z0-9][a-z0-9_-]{0,31}$/.test(id)) return
     control.operation = "select-destination"; control.destinationId = id; control.running = true
+  }
+  function selectAudioDevice(kind, id) {
+    if (!configured || control.running || !["input", "output"].includes(kind) || !/^(default|[a-f0-9]{16})$/.test(id)) return;
+    control.operation = "select-audio-device"; control.deviceKind = kind; control.deviceId = id; control.running = true;
   }
 
   // Owned by this bar entry: disabling it also removes its visual surfaces.
@@ -51,11 +55,29 @@ BarWidget {
     id: control
     property string operation: "toggle"
     property string destinationId: ""
-    command: operation === "select-destination" ? [root.controlPath, operation, destinationId] : [root.controlPath, operation]
+    property string deviceKind: ""
+    property string deviceId: ""
+    command: operation === "select-destination" ? [root.controlPath, operation, destinationId]
+      : operation === "select-audio-device" ? [root.controlPath, operation, deviceKind, deviceId] : [root.controlPath, operation]
   }
+  // A stop must still reach the daemon while a slow start owns `control`.
+  Process { id: audioStop; command: [root.controlPath, "audio-stop-check"] }
   property var controlsState: ({})
   property alias voiceControls: controlsView
   property alias answerPanel: answerView
+  property alias audioPanel: audioView
+  AudioPanel {
+    id: audioView
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    voiceState: root.controlsState
+    configured: root.configured
+    current: root.updatedAt > 0 && Date.now() / 1000 - root.updatedAt < 20 && root.status !== "stopped"
+    busy: control.running
+    onExecute: command => root.runControl(command)
+    onSelectDevice: (kind, id) => root.selectAudioDevice(kind, id)
+    onStopCheck: if (root.configured && !audioStop.running) audioStop.running = true
+    WlrLayershell.namespace: root.voiceBasename + "-audio"
+  }
   AnswerPanel {
     id: answerView
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
@@ -73,7 +95,8 @@ BarWidget {
     busy: control.running
     onExecute: command => root.runControl(command)
     onSelectDestination: id => root.selectDestination(id)
-    onShowAnswer: { controlsView.visible = false; answerView.visible = true }
+    onShowAnswer: { controlsView.visible = false; audioView.visible = false; answerView.visible = true }
+    onShowAudio: { controlsView.visible = false; answerView.visible = false; audioView.visible = true }
     WlrLayershell.namespace: root.voiceBasename + "-controls"
   }
 
@@ -81,6 +104,7 @@ BarWidget {
   property string label: ""
   property real updatedAt: 0
   readonly property string activationState: updatedAt === 0 || status === "stopped" ? "Unknown"
+    : status === "checking" ? "Local audio check"
     : status === "standby" ? "Standby" : status === "preparing" ? "Preparing voice" : status === "connecting" ? "Connecting" : status === "stopping" ? "Stopping"
     : ["listening", "thinking", "acting", "confirm"].includes(status) ? "Talk"
     : status === "idle" ? "Off" : "Unavailable"
@@ -156,7 +180,7 @@ BarWidget {
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
-             || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
+             || root.status === "checking" || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
     tooltipText: "OpenClaw Voice — " + root.activationState + " — " + root.destinationText
       + (root.destination.label ? " · " + root.destination.label : "")
       + (root.destination.target ? " · " + root.destination.target : "") + " — "
@@ -193,7 +217,7 @@ BarWidget {
     }
     onPressed: function(b) {
       // Approval remains in OpenClaw; a click only starts or ends voice.
-      if (b === Qt.RightButton) controlsView.visible = !controlsView.visible
+      if (b === Qt.RightButton) { answerView.visible = false; audioView.visible = false; controlsView.visible = !controlsView.visible }
       else if (b === Qt.LeftButton) root.toggleVoice()
     }
   }

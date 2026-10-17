@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add explicit microphone/speaker device selection with private saved preferences
+  and a local two-second test tone. Block overlapping audio owners, show missing
+  selections, stop on stale or changed bindings and preserve explicit activation.
+  Microphone checking and input metering are deferred by owner choice.
 - Add an explicitly opened answer reader with scrolling, text selection,
   copying, text sizing and deliberate HTTP/HTTPS link actions. Keep a bounded
   beginning of received replies separately from compact caption tails, with

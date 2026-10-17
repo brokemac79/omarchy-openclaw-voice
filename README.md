@@ -198,6 +198,10 @@ Default dependency locations match an OpenClaw Node installation under
 `openclawConfig`, `inputDevice` and `outputDevice` are optional. The latter two
 are stable PulseAudio device names from `pactl list short sources` and
 `pactl list short sinks`. The defaults use the system microphone and speakers.
+On main, **Audio setup** in the bar's voice controls provides device selection
+without editing JSON, plus an explicit two-second local test tone. Saved private
+preferences take precedence over those configuration defaults. Read-only JSON
+discovery requires `pactl`. See [audio setup and test limits](docs/AUDIO-DEVICES.md).
 If upgrading, replace any old browser device IDs with these native names. This integration
 does not discover or control Sonos or Spotify devices.
 

@@ -86,13 +86,14 @@ Item {
   readonly property bool active: status === "listening" || status === "thinking"
                               || status === "acting" || status === "confirm"
                               || status === "error"
-                              || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
+                              || status === "checking" || status === "standby" || status === "preparing" || status === "connecting" || status === "stopping"
   readonly property bool awake: active && fresh
   readonly property bool orbVisible: showOrb && awake
   readonly property bool conversationVisible: awake && ["listening", "thinking", "acting", "confirm"].includes(status)
   readonly property string statusText: ({
     listening: label.startsWith("Microphone muted") ? "Ready · Input muted" : label.startsWith("Talk ready") ? "Ready · Listening" : "Listening", thinking: "Thinking", acting: "Responding",
     confirm: "Confirmation needed", error: "Voice unavailable",
+    checking: label,
     standby: "Standby · Local microphone", preparing: "Preparing voice · Please wait", connecting: "Connecting · Wait for Talk", stopping: "Stopping · Releasing microphone"
   })[status] || label
 

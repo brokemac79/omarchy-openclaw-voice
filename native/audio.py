@@ -7,6 +7,10 @@ import signal
 import sys
 import threading
 import time
+if __package__:
+    from .device_binding import bind_device, device_matches
+else:
+    from device_binding import bind_device, device_matches
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -37,6 +41,7 @@ class AudioWorker:
         self.input_level = self.output_level = 0.0
         self.output_updated = 0.0
         self.negotiating = False
+        self.devices = {}
 
     def emit(self, event, **data):
         if self.stopping:
@@ -91,7 +96,8 @@ class AudioWorker:
                 if value:
                     if not isinstance(value, str) or len(value) > 512:
                         return self.fail('invalid-device')
-                    self.pipeline.get_by_name(element).set_property('device', value)
+                    bind_device(self.pipeline.get_by_name(element), value, Gst)
+                    self.devices[element] = value
         self.pipeline.get_by_name('micmute').set_property('mute', self.muted)
         self.pipeline.get_by_name('replymute').set_property('mute', self.output_muted)
         self.webrtc.connect('on-negotiation-needed', self.negotiate)
@@ -191,6 +197,8 @@ class AudioWorker:
     def heartbeat(self):
         if self.stopping:
             return False
+        if any(not device_matches(self.pipeline.get_by_name(element), name) for element, name in self.devices.items()):
+            return self.fail('audio-device-changed')
         if time.monotonic() - self.output_updated > 0.3:
             self.output_level = 0.0
         self.emit('levels', active=self.connected, captureReady=self.capture_ready,

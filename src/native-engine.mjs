@@ -95,7 +95,7 @@ export async function launchEngine(config, session, { syntheticSilence = false,
         } else if (message.event === 'offer') void offer(message.sdp).catch(fail);
         else if (message.event === 'levels') onTelemetry?.(message);
         else if (message.event === 'error') fail(new VoiceError(
-          ['connection-failed', 'connection-disconnected', 'connection-closed'].includes(message.code)
+          message.code === 'audio-device-changed' ? 'audio_device_unavailable' : ['connection-failed', 'connection-disconnected', 'connection-closed'].includes(message.code)
             ? 'audio_transport_failed' : 'audio_setup_failed'));
       } catch { fail(); }
     }
