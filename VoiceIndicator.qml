@@ -11,6 +11,7 @@ import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import qs.Commons
 import qs.Ui
 import "Instance.js" as Instance
 
@@ -22,6 +23,7 @@ BarWidget {
   property string voiceInstance: setting("voiceInstance", "default")
   property string voiceControl: setting("voiceControl", "")
   property bool holdShortcutEnabled: setting("holdShortcutEnabled", false)
+  property bool showDestinationLabel: setting("showDestinationLabel", false)
   readonly property string voiceBasename: Instance.basename(voiceInstance)
   readonly property string voiceRuntime: voiceBasename ? Quickshell.env("XDG_RUNTIME_DIR") + "/" + voiceBasename : ""
   readonly property string controlPath: Instance.controlPath(voiceInstance, voiceControl, Quickshell.env("HOME"))
@@ -205,37 +207,75 @@ BarWidget {
     + (destination.agent ? destination.agent + " · " : "")
     + (destination.target && destination.target !== "Gateway-selected execution" && destination.target !== "Unverified execution context"
        ? destination.target : destination.label || "Destination unknown")
-  implicitWidth: button.implicitWidth + 6 + destinationTextView.width
+  // Bar sections do not reserve space around the centre widgets. Keep the
+  // default to one icon slot; optional agent text must stay within our allocation.
+  readonly property bool destinationLabelVisible: showDestinationLabel && !vertical
+  implicitWidth: vertical ? barSize : button.implicitWidth
+    + (destinationLabelVisible ? 6 + Math.min(64, destinationTextView.implicitWidth) : 0)
   implicitHeight: button.implicitHeight
+  clip: true
+
+  function tooltipLine(value) {
+    return String(value || "").replace(/\s+/g, " ").trim().slice(0, 512)
+  }
+  TextMetrics {
+    id: destinationMetric
+    font.family: button.fontFamily
+    font.pixelSize: Style.font.body
+    text: root.tooltipLine(root.destinationText)
+    elide: Qt.ElideRight
+    elideWidth: 280
+  }
+  TextMetrics {
+    id: statusMetric
+    font: destinationMetric.font
+    text: root.tooltipLine(!root.configured ? "Instance control is not configured"
+      : root.label || "Audio state unknown — use Stop")
+    elide: Qt.ElideRight
+    elideWidth: 280
+  }
 
   Text {
     id: destinationTextView
     anchors.left: button.right
     anchors.leftMargin: 6
     anchors.verticalCenter: parent.verticalCenter
-    width: Math.min(160, implicitWidth)
-    text: root.destinationText
+    visible: root.destinationLabelVisible
+    width: Math.max(0, Math.min(64, implicitWidth, root.width - button.width - 6))
+    text: root.tooltipLine(root.destination.agent || (root.destination.state === "ready" ? "Voice"
+      : root.destination.state === "unavailable" ? "Unavailable" : "Stale"))
     textFormat: Text.PlainText
     elide: Text.ElideRight
     color: button.foreground
     font.pixelSize: 12
+    font.family: button.fontFamily
+    MouseArea {
+      anchors.fill: parent
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onEntered: if (root.bar) root.bar.showTooltip(button, button.tooltipText)
+      onExited: if (root.bar) root.bar.hideTooltip(button)
+      onClicked: mouse => button.triggerPress(mouse.button)
+    }
   }
 
   BarIconButton {
     id: button
     anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-    width: implicitWidth
+    width: Math.min(implicitWidth, root.width)
     bar: root.bar
     active: root.status === "listening" || root.status === "thinking"
              || root.status === "acting" || root.status === "confirm"
              || root.status === "input-muted" || root.status === "checking" || root.status === "standby" || root.status === "preparing" || root.status === "connecting" || root.status === "stopping"
-    tooltipText: "OpenClaw Voice — " + root.activationState + " — " + root.destinationText
-      + (root.destination.label ? " · " + root.destination.label : "")
-      + (root.destination.target ? " · " + root.destination.target : "") + " — "
-      + (!root.configured ? "Instance control is not configured" : (root.label !== "" ? root.label : "Audio state unknown — use Stop")) + " · Right-click for voice controls"
+    // Omarchy sizes tooltips to unwrapped text. Bound each line using its font
+    // metrics and include destination context once, rather than repeating it.
+    tooltipText: "OpenClaw Voice · " + root.activationState + "\n"
+      + destinationMetric.elidedText + "\n" + statusMetric.elidedText + "\nRight-click for controls"
     Accessible.role: Accessible.Button
     Accessible.name: "OpenClaw Voice"
-    Accessible.description: button.tooltipText
+    Accessible.description: "OpenClaw Voice — " + root.activationState + " — " + root.destinationText
+      + " — " + statusMetric.text + ". Right-click for voice controls"
     Accessible.onPressAction: button.triggerPress(Qt.LeftButton)
 
     iconComponent: Item {

@@ -20,6 +20,7 @@
       "voiceInstance": "default",
       "voiceControl": "",
       "showOrb": false,
+      "showDestinationLabel": false,
       "holdShortcutEnabled": false
     },
     "schema": [
@@ -37,6 +38,11 @@
         "key": "showOrb",
         "type": "boolean",
         "label": "Show legacy audio orb"
+      },
+      {
+        "key": "showDestinationLabel",
+        "type": "boolean",
+        "label": "Show compact agent label in bar"
       },
       {
         "key": "holdShortcutEnabled",
