@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "community.openclaw-voice",
   "name": "OpenClaw Voice",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": "brokemac79; interface by omarchy-voice contributors",
   "description": "Bar microphone control, voice status and speech bubbles for an explicitly installed OpenClaw Voice companion.",
   "kinds": [

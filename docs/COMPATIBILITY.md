@@ -4,6 +4,27 @@ This integration is under development. A released minimum OpenClaw version is
 not yet established. Do not interpret the candidate's version label as a
 supported range such as `>=2026.9.5`.
 
+## v0.6.1 qualification
+
+This patch consolidates the lifecycle/privacy audit and test-tone callback
+cleanup from PRs #19 and #21. The exact release archive is qualified with 140
+Node tests, 38 Python tests, generated WebRTC/hold/tone/wake checks, repeated
+native process teardown and all nine Omarchy renderer fixtures. Release notes
+record its immutable source identity, checksum and final results.
+
+The installed post-crash 0.6.0 tone helper passed 100 synthetic shutdown trials.
+The new callback-lifetime regression exposed references left alive after return
+and passed after explicit cleanup, including partial startup failure and 40
+separate completion/SIGTERM/EOF trials. This does not establish the exact cause
+of the older SIGABRT reported in issue #20.
+
+The owner authorized a full release and upgrade of the existing Surface after
+publication. Keep installation results separate from synthetic qualification.
+No new human microphone/speaker trial, fresh enrollment, complete graphical
+plugin-manager lifecycle or released OpenClaw minimum is claimed. The existing
+permission, exact-request cancellation, host-result and return-to-wake limits
+remain unchanged.
+
 ## v0.6.0 automated qualification
 
 The merged answer reader, audio setup and hold-to-talk features passed 133 Node

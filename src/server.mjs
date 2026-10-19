@@ -101,7 +101,7 @@ native = await createState(runtime);
 const client = new GatewayClient({
   url: config.gatewayUrl, deviceAuthScope: config.gatewayUrl,
   ...config.gatewayAuth,
-  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.6.0', mode: 'ui',
+  clientName: 'gateway-client', clientDisplayName: 'OpenClaw Voice', clientVersion: '0.6.1', mode: 'ui',
   scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals'],
   minProtocol: 4, maxProtocol: 4,
   onHelloOk: hello => { connection.accept(hello); connected = true; destinations.setConnected(true); owner.setGatewayConnected(true); },

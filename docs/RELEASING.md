@@ -10,10 +10,10 @@ marketplace verification.
 
 The permanent plugin ID is `community.openclaw-voice`. The root bar package
 owns its conversation/status children. The companion requires explicit setup.
-Package, manifest and client versions are `0.6.0`. Later releases must update
+Package, manifest and client versions are `0.6.1`. Later releases must update
 them together and use a new tag. Do not move a published release tag.
 
-Versions 0.5.0 and 0.6.0 are owner-authorized full releases. Release
+Versions 0.5.0, 0.6.0 and 0.6.1 are owner-authorized full releases. Release
 notes must still state exact-archive automated results and the missing live/desktop
 qualification; older human trials do not certify a newer tag. The unresolved
 request-completion contract and automatic return-to-standby remain explicit.
@@ -25,6 +25,11 @@ voice session. Capture remains open in the default input-muted state. Publish
 it as a full release, then perform the separately owner-authorized backed-up
 Omarchy upgrade. Record actual upgrade results without inferring a human
 conversation or a fresh graphical/plugin-manager lifecycle from automated checks.
+
+Version 0.6.1 consolidates the lifecycle/privacy audit and explicit test-tone
+callback cleanup. Its archive receives fresh automated qualification; the
+historical tone abort's exact cause is not claimed as established by the cleanup
+fix. Publish the full release before the authorized backed-up Surface upgrade.
 
 ## Before publication
 

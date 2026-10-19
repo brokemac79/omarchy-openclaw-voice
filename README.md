@@ -1,8 +1,10 @@
 # Omarchy OpenClaw Voice
 
-**v0.6.0 - readable answers, audio setup and hold-to-talk.** This full release adds
-an expandable answer reader, private audio-device selection with a local test
-tone, and keyboard/touch hold controls with configurable release behaviour.
+**v0.6.1 - voice lifecycle and privacy fixes.** This full release hardens audio
+and test-tone shutdown, preserves continuing hold replies and keeps private
+configuration values out of errors and audio-worker environment inheritance.
+It includes the expandable answer reader, audio-device selection with a local
+test tone, and keyboard/touch hold controls with configurable release behaviour.
 It retains opt-in wake activation, verified readiness, independent speech/input
 controls, honest action observations and explicit agent/target presets.
 Companion setup and optional wake models remain manual. See [the changelog](CHANGELOG.md)

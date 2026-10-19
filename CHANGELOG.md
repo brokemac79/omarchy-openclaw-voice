@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1 - 19 October 2026
+
 - Release the test-tone helper's GLib callbacks and bus watch on completion or
   startup failure, before Python interpreter shutdown. Add repeated synthetic
   completion, SIGTERM and EOF coverage for the separate tone process.
