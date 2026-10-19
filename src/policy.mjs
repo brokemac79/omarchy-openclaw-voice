@@ -25,7 +25,9 @@ export function checkGrant(grant) {
 }
 
 export function validateGateway(value) {
-  const url = new URL(value);
+  let url;
+  try { url = new URL(value); }
+  catch { throw new Error('Use a wss:// gateway origin, or ws:// on loopback only.'); }
   const loopback = ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
   if ((url.protocol !== 'wss:' && !(url.protocol === 'ws:' && loopback)) ||
       url.username || url.password || url.search || url.hash || url.pathname !== '/') {

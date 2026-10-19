@@ -88,13 +88,18 @@ while True:
       const first = 'a'.repeat(16), second = 'b'.repeat(16), third = 'c'.repeat(16);
       assert.equal((await request('hold-release', first)).holdAccepted, true);
       assert.equal((await request('hold-start', first)).holdAccepted, false);
-      assert.equal((await request('hold-start', second)).holdAccepted, true);
+      const started = await request('hold-start', second);
+      assert.equal(started.holdAccepted, true);
+      assert.equal(started.requested, true);
+      assert.equal(started.hold.held, true);
       renewing = setInterval(() => { void request('hold-renew', second).catch(() => {}); }, 150);
       await until(state => state.active && state.hold.ready);
       const countCreates = async () => (await readFile(receipts, 'utf8')).split('\n').filter(line => line === '"talk.client.create"').length;
       assert.equal(await countCreates(), 1);
       assert.equal((await request('select-audio-device')).audioSelectionChanged, false);
-      assert.equal((await request('hold-release', second)).holdAccepted, true);
+      const stopped = await request('hold-release', second);
+      assert.equal(stopped.holdAccepted, true);
+      assert.equal(stopped.hold.held, false);
       clearInterval(renewing); renewing = null;
       if (holdRelease === 'end') {
         await until(state => !state.requested && state.status === 'idle');

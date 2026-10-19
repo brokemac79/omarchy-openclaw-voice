@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { checkVoiceConfig, checkGrant, validateGateway, level } from '../src/policy.mjs';
 
 const oauth = () => ({ auth: { profiles: { voice: { provider: 'openai', mode: 'oauth' } } } });
+
+test('a malformed Gateway origin never retains supplied credentials in an error', () => {
+  assert.throws(() => validateGateway('wss://SYNTH_USER:SYNTH_PASSWORD@'), error => {
+    assert.match(error.message, /gateway origin/);
+    assert.doesNotMatch(String(error) + JSON.stringify(error), /SYNTH/);
+    return true;
+  });
+});
 test('OAuth is required; reasoning fallbacks are preserved and reported', () => {
   assert.throws(() => checkVoiceConfig({}));
   const config = oauth(); config.agents = { defaults: { model: { fallbacks: ['example/text-model'] } } };

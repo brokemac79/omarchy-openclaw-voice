@@ -5,6 +5,24 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig, resolveGateway } from '../src/config.mjs';
 
+test('invalid private configuration fails without quoting its contents or silently accepting a non-object root', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'voice-private-config-'));
+  try {
+    await mkdir(join(home, '.openclaw'));
+    await mkdir(join(home, '.config/openclaw-voice'), { recursive: true });
+    for (const [gateway, options] of [['SYNTH_PRIVATE_CONFIG', '{}'], ['{}', 'SYNTH_PRIVATE_OPTIONS'],
+      ['null', '{}'], ['{}', '[]']]) {
+      await writeFile(join(home, '.openclaw/openclaw.json'), gateway);
+      await writeFile(join(home, '.config/openclaw-voice/config.json'), options);
+      await assert.rejects(loadConfig({ home, env: {} }), error => {
+        assert.match(error.message, /configuration/i);
+        assert.doesNotMatch(String(error) + JSON.stringify(error), /SYNTH/);
+        return true;
+      });
+    }
+  } finally { await rm(home, { recursive: true, force: true }); }
+});
+
 test('local installs use loopback and local credentials, ignoring stale remote settings', () => {
   assert.equal(resolveGateway({}, {}).gatewayUrl, 'ws://127.0.0.1:18789');
   const result = resolveGateway({ gateway: { mode: 'local', port: 19001,

@@ -36,9 +36,18 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
   switch (command) {
     case 'status': return status();
     case 'destinations': await destinations.refresh(); return destinations.snapshot();
-    case 'hold-start': return { ...status(), holdAccepted: hold.press(invocation.holdToken) };
-    case 'hold-renew': return { ...status(), holdAccepted: hold.renew(invocation.holdToken) };
-    case 'hold-release': return { ...status(), holdAccepted: hold.release(invocation.holdToken) };
+    case 'hold-start': {
+      const holdAccepted = hold.press(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
+    case 'hold-renew': {
+      const holdAccepted = hold.renew(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
+    case 'hold-release': {
+      const holdAccepted = hold.release(invocation.holdToken);
+      return { ...status(), holdAccepted };
+    }
     case 'audio-devices': audio.message = ''; await audio.refresh(); return status();
     case 'select-audio-device':
       try { await audio.select(invocation.deviceKind, invocation.deviceId); return { ...status(), audioSelectionChanged: true }; }
@@ -178,7 +187,11 @@ async function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true; clearInterval(healthTimer); clearInterval(destinationTimer); clearInterval(audioTimer); clearInterval(holdTimer);
   // systemd also kills the whole control group if a provider cleanup stalls.
-  await audio.stopCheck(); await owner.stop(); await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
+  await audio.stopCheck(); await owner.stop();
+  // A cancelled launch can still be waiting for the worker's ready event.
+  // Let that acquisition close its late candidate before exiting the parent.
+  await owner.startup; await owner.mediaCleanup;
+  await client.stopAndWait(); await native.close(); await control.close(); process.exit(code);
 }
 process.on('SIGTERM', () => { void shutdown(); });
 process.on('SIGINT', () => { void shutdown(); });

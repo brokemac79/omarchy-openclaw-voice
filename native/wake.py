@@ -10,7 +10,8 @@ from wake_models import load_detector
 from device_binding import bind_device, device_matches
 
 
-def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_frames=None, synthetic_pcm=None):
+def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_frames=None, synthetic_pcm=None,
+        watch_stdin=None):
     # Models are explicit external files. Never download a default model, accept
     # an arbitrary command or fall back to a different phrase/backend.
     if synthetic_pcm is not None and not synthetic:
@@ -101,12 +102,12 @@ def run(options, synthetic=False, predictor=None, emit_event=None, synthetic_fra
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, stop)
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, stop)
 
-    def eof():
-        sys.stdin.buffer.read(1)
-        GLib.idle_add(stop)
-
-    if not synthetic:
-        threading.Thread(target=eof, daemon=True).start()
+    observe_parent = not synthetic if watch_stdin is None else watch_stdin
+    if observe_parent:
+        # Observe parent closure without leaving a buffered-stdin thread alive
+        # during interpreter shutdown. Any control input also releases wake.
+        GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR | GLib.IO_NVAL,
+                          lambda *_args: stop())
     try:
         pipeline.set_state(Gst.State.PLAYING)
         result, state, _ = pipeline.get_state(5 * Gst.SECOND)

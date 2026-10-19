@@ -54,7 +54,7 @@ export class EngineOwner {
       await previous; await this.cleanup; await this.mediaCleanup;
       if (epoch !== this.epoch) return;
       try {
-        if (this.mediaFault) throw new Error('Audio release failed.');
+        if (this.mediaFault) throw new VoiceError('release_unconfirmed');
         const aborter = new AbortController(); this.wakeAbort = aborter;
         const acquisition = this.launchWake({ signal: aborter.signal,
           onWake: () => {
@@ -105,13 +105,20 @@ export class EngineOwner {
         await this.cleanup;
         await this.mediaCleanup;
         if (epoch !== this.epoch) return;
-        if (this.mediaFault) throw new Error('Audio release failed.');
+        if (this.mediaFault) throw new VoiceError('release_unconfirmed');
         const candidate = await this.launch({
           onFailure: error => { if (epoch === this.epoch) void this.fail(error, 'audio_setup_failed'); },
           onTelemetry: data => { if (epoch === this.epoch) this.telemetry(data); },
           onProgress: stage => { if (epoch === this.epoch && this.requested) this.progress(stage); },
         });
-        if (epoch !== this.epoch) { await candidate.close(); return; }
+        if (epoch !== this.epoch) {
+          try { await candidate.close(); }
+          catch {
+            this.mediaFault = true;
+            await this.fail(new VoiceError('release_unconfirmed'));
+          }
+          return;
+        }
         this.engine = candidate; this.lastSeen = this.startedAt = this.now();
         await candidate.start({ muted: this.muted, outputMuted: this.outputMuted, ...(this.holdMode ? { holdMode: true } : {}) });
         if (epoch === this.epoch) this.lastSeen = this.startedAt = this.now();
