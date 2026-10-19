@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add spoken return-to-standby commands and a configurable inactivity timeout
+  for wake-started conversations, defaulting to 30 seconds (0 disables it).
+  Wait through pending replies and playback; preserve received answers and
+  cancel rearming on Stop, failure, disconnect or a replacement call.
+
 - Restore the compact voice bar icon by default, with an optional bounded agent
   label. Keep hover details in a short multiline tooltip without repeated
   destination text; prevent labels from painting beyond narrow or vertical slots.

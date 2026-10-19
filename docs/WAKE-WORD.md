@@ -4,11 +4,11 @@ Wake support defaults to disabled. Configuring it does not arm a microphone.
 Click-to-talk uses the existing authenticated Talk route and does not select a
 wake mode. Wake detection grants no permission, authentication or approval.
 
-The first implementation provides explicit wake-to-conversation activation.
-Talk remains open until Stop, failure or disconnect. Automatic return after one
-request is deferred to [issue #6](https://github.com/brokemac79/omarchy-openclaw-voice/issues/6)
-and remains disabled. Battery drain has not been qualified. These limits are
-accepted for this implementation; they are not claims of completed qualification.
+Wake-to-conversation activation can return to local standby on a spoken command
+or after inactivity (30 seconds by default). This ends the voice connection,
+not background work. Return after a verified completed host request is still
+deferred to [issue #6](https://github.com/brokemac79/omarchy-openclaw-voice/issues/6)
+and remains disabled. Battery drain has not been qualified.
 
 | State | Input ownership | Where audio goes |
 | --- | --- | --- |
@@ -276,6 +276,7 @@ For the configurable English phrase and the model above:
 {
   "wake": {
     "enabled": true,
+    "inactivitySeconds": 30,
     "backend": "sherpa-onnx",
     "python": "/absolute/path/to/wake-venv/bin/python",
     "phrase": "Hey Open Claw",
@@ -348,11 +349,59 @@ qualify single-request completion using this response event alone. Keep that
 mode disabled pending a correlated completion contract; human wake accuracy
 testing cannot resolve this missing API boundary.
 
-`standby-conversation` leaves Talk open until Stop, failure or disconnect. It
-does not return automatically. Stop always means Off, including one-request
-mode. To change modes, Stop and arm again. Standby mute also means Off.
-Click-to-talk from Standby releases the detector and starts ordinary Talk with
-no return mode. The synthetic-silence test daemon refuses standby commands.
+### Voice return and inactivity
+
+During ordinary Talk with wake support configured, say **"return to standby"**,
+**"go back to standby"**, **"switch to standby"** or **"back to standby"**.
+"Stand by" and "stand-by", optional "OpenClaw"/"Hey Open Claw", and polite
+forms such as "could you please go back to standby?" are also accepted.
+The command must be the whole finalized user utterance. Partial transcripts,
+assistant replies, tool text, quotations and negations are not commands.
+"Stop listening" is deliberately not a synonym: standby still uses a local
+microphone. The blue dot and Standby status confirm the completed transition.
+
+Recognition uses the current authenticated Talk session's user transcript,
+not another offline speech recognizer. The audio has therefore already reached
+the existing Gateway/provider; this cannot guarantee that an upstream response
+or action to the phrase was prevented. No new provider, permissions or transcript
+history is added. Speech recognition errors can miss a command. Tests use
+synthetic transcripts and fake audio, not human end-to-end recognition.
+
+In private companion `config.json`, `wake.inactivitySeconds` defaults to **30**.
+Set it to **0** to disable automatic return, or a whole number from 1 to 3600
+seconds. Keep existing model settings; for example, change just this field:
+
+```json
+{
+  "wake": {
+    "inactivitySeconds": 60
+  }
+}
+```
+
+Restart the companion after a configuration change. Configuring this field
+does not arm wake listening or enable wake support by itself.
+
+The automatic countdown applies only to conversations started by a wake word.
+It starts when Talk is ready, restarts on audible native input/output or ordered
+conversation events, and waits through pending provider replies. The timer starts
+again after a provider turn ends; playback activity keeps extending it. Heartbeats
+and unrelated diagnostics do not extend it. Explicit input mute pauses automatic
+return. Room noise above the native activity threshold can extend the countdown;
+this is not speaker identification. Missing event correlation or a full bounded
+turn ledger pauses automatic return visibly rather than guessing. A spoken
+standby command remains available with the timer disabled or paused.
+
+Both return paths release Talk input before reacquiring the local detector.
+Stop, failure, disconnect, service shutdown and replacement calls cancel a pending
+return. A release failure leaves Off/error. Received answers remain readable;
+ending the voice connection does not recover results that arrive afterwards.
+An idle provider turn is not proof that background OpenClaw work finished.
+
+Stop always means Off. Standby mute also means Off. Click-to-talk has no automatic
+return timer; a voice standby command is available if wake is configured.
+Hold-to-talk does not accept standby commands or use the timer. The synthetic-silence
+test daemon still refuses standby commands.
 
 ## Validation and room trials
 

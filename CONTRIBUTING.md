@@ -50,6 +50,11 @@ Off/Standby/Connecting/Talk/Stopping/Unknown presentation checks with fake
 controls. Runtime/model qualification is separate; see
 [wake activation](docs/WAKE-WORD.md).
 
+`npm test` also exercises spoken standby commands, configurable idle return,
+pending replies/playback, input ownership and Stop/disconnect races. The Linux
+daemon fixture uses fake workers with an exclusive input lock and synthetic
+Gateway events. These checks do not establish human speech recognition accuracy.
+
 For interruption controls, the native audio proof also checks actual generated
 playback samples through Quiet/resume and independent input mute. Run
 `python3 test/qml_controls.py` in the Omarchy graphical session with synthetic

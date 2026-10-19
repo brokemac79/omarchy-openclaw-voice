@@ -236,7 +236,7 @@ boundaries](docs/STARTUP-READINESS.md).
 | `openclaw-voice status` | Show local connection and microphone state |
 | `openclaw-voice preflight` | Check visible gateway authentication and voice readiness |
 | `openclaw-voice diagnostics` | Show bounded startup/first-reply timings and sanitized failure codes without starting audio |
-| `openclaw-voice standby-conversation` | Explicitly arm an independently configured local wake detector; Talk stays open after activation |
+| `openclaw-voice standby-conversation` | Explicitly arm the configured local wake detector; wake-started Talk returns after inactivity or a spoken standby command |
 
 Right-click the bar icon for separate **Mute input**, **Quiet** and **End voice**
 controls. **Cancel request** is visibly unavailable for the current native route.
@@ -265,8 +265,11 @@ does not reopen the microphone. WebRTC supports speaking over a reply; physical
 microphone, speaker and echo behaviour still require a test on each device.
 Version 0.5.0 includes optional local wake activation, disabled by default, with support for both "Hey OpenClaw"
 and "Hey Open Claw" through the separately provisioned sherpa-onnx model. Say the
-phrase, wait for Talk readiness, then speak. Stop disarms input; automatic return
-to standby is deferred. See [setup, validation and limits](docs/WAKE-WORD.md).
+phrase, wait for Talk readiness, then speak. Say **"return to standby"** or
+**"go back to standby"** to return to local wake listening. Wake-started conversations
+also return after 30 seconds of inactivity by default; set `wake.inactivitySeconds`
+in the private companion config (`0` disables the timer). Stop disarms input.
+See [setup, validation and limits](docs/WAKE-WORD.md).
 
 OpenClaw requires a fresh confirmation for voice actions it classifies as
 high-impact, including computer/node control such as opening an app. Answer the

@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { validateGateway } from './policy.mjs';
 import { resolveInstance } from './instance.mjs';
 import { destinationPresets } from './destinations.mjs';
+import { inactivitySeconds } from './wake-return.mjs';
 
 async function configuration(path, name) {
   const text = await readFile(path, 'utf8');
@@ -81,6 +82,7 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
   if (options.holdRelease !== undefined && !['mute', 'end'].includes(options.holdRelease)) {
     throw new Error('holdRelease must be mute or end.');
   }
+  const wakeInactivitySeconds = inactivitySeconds(options.wake?.inactivitySeconds);
   return {
     instance,
     ...resolveGateway(openclaw, env),
@@ -95,7 +97,7 @@ export async function loadConfig({ home = homedir(), env = process.env } = {}) {
     inputDevice: options.inputDevice,
     outputDevice: options.outputDevice,
     // Configuring models never arms input; only an explicit control command can.
-    wake: options.wake,
+    wake: options.wake ? { ...options.wake, inactivitySeconds: wakeInactivitySeconds } : undefined,
     holdRelease: options.holdRelease || 'mute',
   };
 }
