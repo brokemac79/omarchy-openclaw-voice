@@ -54,4 +54,5 @@ jobs:
           python3 test/native_audio.py
           python3 test/native_hold.py
           python3 test/native_audio_check.py
+          python3 test/native_tone_lifecycle.py
           python3 test/native_wake.py

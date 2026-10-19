@@ -82,6 +82,9 @@ installed and `python3 test/qml_audio_devices.py` in Omarchy. Use generated tone
 fake sinks, synthetic inventories and fake controls only. The new test tone has
 no microphone path. Verify binding/ownership, stale discovery, persisted choices,
 Stop/Close and startup cancellation; see [audio limits](docs/AUDIO-DEVICES.md).
+Run `python3 test/native_tone_lifecycle.py` for callback release and repeated
+completion, SIGTERM with stdin open and EOF process exits. It uses generated
+tones and fake sinks only; it never records or plays physical audio.
 
 For hold-to-talk, run `python3 test/native_hold.py` on Linux and
 `python3 test/qml_hold.py` in Omarchy. Use generated input, fake sinks, fake SDKs
