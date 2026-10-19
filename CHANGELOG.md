@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release the test-tone helper's GLib callbacks and bus watch on completion or
+  startup failure, before Python interpreter shutdown. Add repeated synthetic
+  completion, SIGTERM and EOF coverage for the separate tone process.
+
 - Fix native audio shutdown with open control stdin and stop malformed or
   oversized commands safely. Release wake input without a blocking stdin thread.
   Wait for late worker release before exiting a stopped daemon.

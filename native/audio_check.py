@@ -58,20 +58,33 @@ def run(options, synthetic=False, observe=None, watch_stdin=True):
             emit('error'); return stop()
         return not stopped
 
-    pipeline.get_bus().add_signal_watch()
-    pipeline.get_bus().connect('message', message)
-    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, stop)
-    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, stop)
-    if watch_stdin:
-        GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, lambda *_: stop())
+    bus = pipeline.get_bus()
+    sources = []
+    handler = None
+    watching = False
     try:
+        bus.add_signal_watch(); watching = True
+        handler = bus.connect('message', message)
+        sources.append(GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, stop))
+        sources.append(GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, stop))
+        if watch_stdin:
+            sources.append(GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, lambda *_: stop()))
         if pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
             raise RuntimeError('Audio check unavailable')
         emit('ready', synthetic=synthetic)
-        GLib.timeout_add(100, tick)
+        sources.append(GLib.timeout_add(100, tick))
         loop.run()
     finally:
         stop()
+        # Drop Python callbacks while the interpreter is still running, rather
+        # than leaving GLib/bus references to be finalized during process exit.
+        for identifier in sources:
+            if loop.get_context().find_source_by_id(identifier):
+                GLib.source_remove(identifier)
+        if handler is not None:
+            bus.disconnect(handler)
+        if watching:
+            bus.remove_signal_watch()
 
 
 if __name__ == '__main__':
