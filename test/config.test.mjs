@@ -5,6 +5,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig, resolveGateway } from '../src/config.mjs';
 
+test('wake inactivity defaults to 30 seconds, accepts 0/custom values and rejects malformed durations privately', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'voice-wake-config-'));
+  try {
+    await mkdir(join(home, '.openclaw'));
+    await mkdir(join(home, '.config/openclaw-voice'), { recursive: true });
+    await writeFile(join(home, '.openclaw/openclaw.json'), '{}');
+    const path = join(home, '.config/openclaw-voice/config.json');
+    for (const value of [undefined, 0, 1, 60, 3600]) {
+      await writeFile(path, JSON.stringify({ wake: { enabled: true, inactivitySeconds: value } }));
+      assert.equal((await loadConfig({ home, env: {} })).wake.inactivitySeconds, value ?? 30);
+    }
+    for (const value of [-1, 3601, 1.5, '30', null, true, 'SYNTH_PRIVATE_VALUE']) {
+      await writeFile(path, JSON.stringify({ wake: { inactivitySeconds: value } }));
+      await assert.rejects(loadConfig({ home, env: {} }), error => {
+        assert.match(error.message, /wake.inactivitySeconds/); assert.doesNotMatch(error.message, /SYNTH/); return true;
+      });
+    }
+  } finally { await rm(home, { recursive: true, force: true }); }
+});
+
 test('invalid private configuration fails without quoting its contents or silently accepting a non-object root', async () => {
   const home = await mkdtemp(join(tmpdir(), 'voice-private-config-'));
   try {

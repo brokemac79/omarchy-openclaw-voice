@@ -119,9 +119,9 @@ test('Stop/disconnect while returning to standby cancels the selected mode', asy
   assert.equal(f.owner.standby, false); assert.equal(f.owner.wakeMode, 'off');
   assert.equal(f.held(), 0);
 });
-test('open conversation never returns automatically; manual Talk does not inherit a wake mode', async () => {
+test('conversation mode does not rearm immediately on a provider boundary; manual Talk inherits no wake mode', async () => {
   const f = fixture(); await f.owner.arm('conversation'); f.callbacks[0].onWake(); await f.owner.startup;
-  f.owner.telemetry({ active: true, captureReady: true }); f.owner.talk({ type: 'turn.ended' }); f.time(2000); f.owner.checkHealth();
+  f.owner.telemetry({ active: true, captureReady: true }); f.owner.talk({ type: 'turn.ended', seq: 1, turnId: 'fixture-turn' }); f.time(2000); f.owner.checkHealth();
   assert.equal(f.owner.requested, true); assert.equal(f.owner.standby, false);
   await f.owner.stop(); await f.owner.arm('one-request'); await f.owner.start();
   assert.equal(f.owner.wakeMode, 'off'); assert.equal(f.maximum(), 1); await f.owner.stop();

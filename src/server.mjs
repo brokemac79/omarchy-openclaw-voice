@@ -27,6 +27,7 @@ const status = () => ({ connected, requested: owner.requested, active: owner.act
   standby: owner.standby, standbyStarting: owner.standbyStarting, wakeMode: owner.wakeMode,
   wakeEnabled: config.wake?.enabled === true && !syntheticSilence,
   wakeModes: ['conversation'], singleRequestQualified: false, wakeToReadyMs: owner.wakeToReadyMs,
+  wakeInactivitySeconds: config.wake?.inactivitySeconds ?? 30,
   muted: owner.muteConfirmed, muteRequested: owner.muted, engineStarting: owner.engineStarting,
   syntheticSilence, engine: 'gstreamer', model: MODEL, instance: config.instance.name,
   gatewayConnection: connection.get(), gatewaySdk, diagnostics: owner.readiness.snapshot(), ...native.get() });
@@ -154,6 +155,9 @@ audio = new AudioDevices({ path: config.audioSelectionPath, inputDevice: config.
 });
 await audio.load();
 owner = new EngineOwner({ session, native,
+  wakeInactivitySeconds: config.wake?.inactivitySeconds ?? 30,
+  canReturnToWake: () => connected && !shuttingDown && !audio.occupied && !destinations.switching
+    && destinations.snapshot().destination.state === 'ready',
   getDestination: () => destinations.snapshot(), getAudio: () => audio.snapshot(), getHold: () => hold?.snapshot(),
   onStopped: () => { destinations.endCall(); if (!audio.occupied) audio.binding = null; },
   wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,

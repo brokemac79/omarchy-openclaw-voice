@@ -2,12 +2,15 @@ import { Transcript } from './transcript.mjs';
 import { Readiness, monotonicNow } from './readiness.mjs';
 import { VoiceError, failureDetails } from './voice-errors.mjs';
 import { ActionProgress } from './action-progress.mjs';
+import { WakeReturn } from './wake-return.mjs';
 
 // Serializes microphone ownership across startup, cancellation and replacement.
 export class EngineOwner {
   constructor({ session, launch, launchWake, native, wakePhrase, now = monotonicNow, singleRequestBoundary = false,
-    getDestination = () => ({}), getAudio = () => ({}), getHold = () => ({}), onStopped = () => {} }) {
-    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, getAudio, getHold, onStopped });
+    getDestination = () => ({}), getAudio = () => ({}), getHold = () => ({}), onStopped = () => {},
+    wakeInactivitySeconds = 30, canReturnToWake = () => true }) {
+    Object.assign(this, { session, launch, launchWake, native, wakePhrase, now, getDestination, getAudio, getHold, onStopped, canReturnToWake });
+    this.wakeReturn = new WakeReturn({ seconds: wakeInactivitySeconds, now });
     this.singleRequestBoundary = singleRequestBoundary;
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.epoch = 0; this.engine = null;
@@ -80,6 +83,7 @@ export class EngineOwner {
   }
   start({ wake = false, hold = false, invokedAtMs } = {}) {
     if (this.requested) return this.startup;
+    this.wakeReturn.reset();
     if (!wake) this.wakeMode = 'off';
     if (!wake) this.wakeDetectedAt = null;
     this.wakeToReadyMs = null;
@@ -131,6 +135,7 @@ export class EngineOwner {
   }
   async stop(message) {
     const epoch = ++this.epoch;
+    this.wakeReturn.reset();
     this.wakeMode = 'off'; this.turnEndedAt = null; this.releaseDetector();
     this.requested = this.active = this.muted = this.muteConfirmed = this.engineStarting = false;
     this.holdMode = false;
@@ -154,6 +159,17 @@ export class EngineOwner {
       this.render();
     }
     await this.cleanup;
+  }
+  async returnToStandby() {
+    if (!this.requested || !this.active || this.holdMode || !this.launchWake || this.failure
+        || this.mediaFault || !this.gatewayConnected || !this.canReturnToWake()) return false;
+    const epoch = this.epoch;
+    await this.stop();
+    // Stop, failure, disconnect, a replacement call or shutdown cancels rearming.
+    if (this.epoch !== epoch + 1 || this.failure || this.mediaFault
+        || !this.gatewayConnected || !this.canReturnToWake()) return false;
+    await this.arm('conversation');
+    return this.standby;
   }
   async fail(error, fallback) {
     this.failure = failureDetails(error, fallback);
@@ -185,6 +201,7 @@ export class EngineOwner {
     if (this.standby || this.standbyStarting) { void this.stop(); return; }
     if (!this.requested) return;
     if (this.turnEndedAt !== null) return;
+    this.wakeReturn.activity();
     this.muted = !this.muted; this.engine?.mute(this.muted);
     this.render();
   }
@@ -234,12 +251,12 @@ export class EngineOwner {
     this.muteConfirmed = data.muted === true;
     this.outputMuteConfirmed = data.outputMuted === true;
     if (data.output > 0.01) this.lastOutput = this.now();
+    if (this.active) this.wakeReturn.telemetry(data);
     this.native.levels(this.muteConfirmed ? 0 : data.input, this.outputMuteConfirmed ? 0 : data.output);
     this.render();
   }
   talk(data) {
     if (!this.requested) return;
-    this.actions.accept(data);
     if (data.type === 'session.ready') { this.sessionReady = true; this.readiness.mark('talk-ready'); this.updateReadiness(); }
     this.readiness.talk(data);
     if (data.type === 'turn.ended' && this.wakeMode === 'one-request' && this.turnEndedAt === null) {
@@ -249,6 +266,10 @@ export class EngineOwner {
     const acceptedText = this.transcript.accept(data);
     if (acceptedText && data.type.startsWith('output.text.')) this.answer = this.transcript.getAnswer();
     if (acceptedText && data.type === 'output.text.done') this.lastResult = this.transcript.get().assistant;
+    if (this.launchWake && !this.holdMode && this.wakeReturn.accept(data, acceptedText) && this.active) {
+      void this.returnToStandby(); return;
+    }
+    this.actions.accept(data);
     const phases = { 'transcript.delta': 'listening', 'transcript.done': 'thinking',
       'output.audio.started': 'acting', 'output.audio.done': 'listening',
       'output.text.delta': 'acting', 'output.text.done': 'listening',
@@ -259,7 +280,9 @@ export class EngineOwner {
   }
   updateReadiness() {
     const active = this.transportActive && this.captureReady && this.sessionReady;
-    if (active && !this.active) { this.phase = 'listening'; this.caption = 'Talk ready — Listening'; }
+    if (active && !this.active) {
+      this.phase = 'listening'; this.caption = 'Talk ready — Listening'; this.wakeReturn.ready();
+    }
     this.active = active;
     if (active) { this.readiness.mark('ready'); this.startupStage = null; }
     if (active && this.wakeDetectedAt !== null && this.wakeToReadyMs === null) {
@@ -281,8 +304,10 @@ export class EngineOwner {
           : this.muteConfirmed ? 'Input muted · Reply continues · Hold to speak again' : 'Muting input · Reply continues', this.transcript.get(), this.controls());
       return;
     }
+    const idleMode = !this.wakeReturn.seconds ? 'idle return off'
+      : this.wakeReturn.blocked ? 'idle return paused' : `${this.wakeReturn.seconds}s idle return`;
     const mode = this.requested && this.wakeMode !== 'off'
-      ? ` · ${this.wakeMode === 'one-request' ? 'returns to standby' : 'open conversation'}` : '';
+      ? ` · ${this.wakeMode === 'one-request' ? 'returns to standby' : idleMode}` : '';
     const connecting = this.requested && !this.active;
     const waitingGateway = !this.gatewayConnected && !this.requested && !this.failure && !this.standby && !this.standbyStarting;
     const preparing = connecting && ['native-worker', 'voice-checks', 'provider-session', 'audio-setup'].includes(this.startupStage);
@@ -298,6 +323,14 @@ export class EngineOwner {
     if (!this.requested || !this.engine) return;
     // Heartbeats alone cannot keep a never-connected call alive indefinitely.
     const elapsed = this.now() - this.startedAt;
+    const timedOut = this.engineStarting ? elapsed > 50000
+      : this.now() - this.lastSeen > 10000 || (!this.active && elapsed > 45000);
+    if (timedOut) {
+      void this.fail(new VoiceError('audio_setup_timeout')); return;
+    }
+    if (this.active && !this.muted && !this.muteConfirmed && this.wakeMode === 'conversation' && this.wakeReturn.due()) {
+      void this.returnToStandby(); return;
+    }
     if (this.turnEndedAt !== null && this.active && this.muteConfirmed && this.now() - this.lastOutput >= 1500) {
       const epoch = this.epoch;
       // Only the explicitly selected one-request mode can rearm. Errors, user
@@ -310,11 +343,6 @@ export class EngineOwner {
     }
     if (this.turnEndedAt !== null && this.now() - this.turnEndedAt > 30000) {
       void this.stop('Could not confirm quiet playback. Microphone off.'); return;
-    }
-    const timedOut = this.engineStarting ? elapsed > 50000
-      : this.now() - this.lastSeen > 10000 || (!this.active && elapsed > 45000);
-    if (timedOut) {
-      void this.fail(new VoiceError('audio_setup_timeout'));
     }
   }
 }

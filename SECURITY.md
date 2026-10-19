@@ -84,8 +84,14 @@ local detector microphone; Standby is not microphone off. Its bounded frames
 remain local and are not recorded or sent to the Gateway/provider. Detection
 releases that input before a fresh ordinary Talk connection. Stop, errors and
 disconnect disarm it; reconnect and boot never arm it. The supported conversation
-mode does not return to Standby automatically; one-request return remains
-disabled pending a correlated completion contract. A wake is not authentication
+mode returns to local Standby after 30 seconds of inactivity by default, with a
+configurable timeout or an explicit spoken standby command. Only finalized user
+transcripts from the current Talk session can command a return; this recognition
+uses the existing Gateway/provider transcript. Replies and tool text cannot arm
+input. Talk releases local audio before the detector starts, and explicit Stop,
+failure and disconnect cancel a pending return. An inactivity boundary does not
+prove host work completion; one-request return remains disabled pending a
+correlated completion contract. A wake is not authentication
 or approval. Model licences and runtime qualification are independent of the
 application licence; see [wake activation](docs/WAKE-WORD.md).
 
