@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore the compact voice bar icon by default, with an optional bounded agent
+  label. Keep hover details in a short multiline tooltip without repeated
+  destination text; prevent labels from painting beyond narrow or vertical slots.
+
 ## 0.6.1 - 19 October 2026
 
 - Release the test-tone helper's GLib callbacks and bus watch on completion or

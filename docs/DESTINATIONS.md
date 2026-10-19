@@ -1,9 +1,14 @@
 # Visible agents and destination presets
 
-The bar shows the selected agent and its configured node or conversation context,
-including Unavailable/Stale state before a call starts. Hover for the full label;
-the compact bar can elide long names. The conversation status and deliberately
-opened Voice controls show the full selection. No text is interpreted as markup.
+The bar uses a compact icon with a status dot. Hover shows the voice state and
+selected agent/node or conversation context in a bounded, multiline tooltip,
+including Unavailable/Stale state. Long details are elided; the conversation
+status and deliberately opened Voice controls show the full selection. No text
+is interpreted as markup.
+
+Enable **Show compact agent label in bar** (`showDestinationLabel`) in the widget
+settings for an optional agent name, capped at 64 pixels. Vertical bars keep the
+icon alone. The label also opens Voice controls on right-click.
 
 Right-click the bar for Voice controls. Select an existing preset there; setup
 stays in the private companion configuration. A selection never starts voice.

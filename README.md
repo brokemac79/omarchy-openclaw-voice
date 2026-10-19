@@ -253,7 +253,8 @@ Action observations show Heard or Outcome unknown separately from spoken caption
 Authoritative execution results are still pending an upstream correlation contract;
 see [action progress and remaining work](docs/ACTION-PROGRESS.md).
 
-The bar also shows the selected agent and node/conversation context. Right-click
+Hover the compact bar icon for the selected agent and node/conversation context;
+an optional compact agent label is available in the widget settings. Right-click
 for explicit destination presets; End voice and review/dismiss unknown outcomes
 before switching. Configure exact existing destinations privately; see
 [agent and target selection](docs/DESTINATIONS.md).

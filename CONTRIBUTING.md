@@ -71,6 +71,10 @@ Use synthetic discovery, fake SDK/media and private disposable selection files.
 Check active-call/review guards and old-call event isolation before claiming
 switching coverage; see [destination contracts](docs/DESTINATIONS.md).
 
+Run `python3 test/qml_bar_layout.py` for the default icon, optional agent label,
+constrained/vertical slots and bounded multiline hover, using synthetic neighbours
+and the real Omarchy components without audio.
+
 For the answer reader, run `python3 test/qml_answers.py` in Omarchy with
 `wl-copy`, `wl-paste`, `wtype` and QtTest available. It uses synthetic owner
 events, actual components, pointer/simulated touch and keyboard/clipboard checks.
