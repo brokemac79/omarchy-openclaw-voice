@@ -41,7 +41,9 @@ export class GatewayClient {
  },20);}
  async stopAndWait(){clearInterval(this.timer);}
  async request(method,params){
-  if(method==='agents.list')return {agents:[{id:'main',name:'Synthetic main'}]};
+  if(method==='agents.list'){
+   if(!this.discovered){this.discovered=true;await new Promise(resolve=>setTimeout(resolve,1500));}
+   return {agents:[{id:'main',name:'Synthetic main'}]};}
   if(method==='node.list')return {nodes:[]};
   if(method==='sessions.resolve')return {ok:true,key:params.key,agentId:'main'};
   if(method==='sessions.list')return {sessions:[{key:params.search,agentId:'main'}]};
@@ -98,7 +100,7 @@ print(json.dumps([{'name':'fixture-mic','description':'Synthetic input','monitor
       env: { PATH: root + ':' + process.env.PATH, HOME: root, XDG_RUNTIME_DIR: root, XDG_CONFIG_HOME: join(root, 'config') }, stdio: 'pipe',
     });
     child.stdout.on('data', chunk => { output += chunk; }); child.stderr.on('data', chunk => { output += chunk; });
-    await until(state => state.connected && state.destination?.state === 'ready');
+    await until(state => state.connected && state.destination?.state === 'stale');
     const counts = async () => { try { return (await readFile(join(root, 'workers'), 'utf8')).trim().split('\n'); } catch { return []; } };
     assert.deepEqual(await counts(), []);
     assert.equal((await request('status')).wakeInactivitySeconds, 1);

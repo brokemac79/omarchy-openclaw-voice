@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Wait for initial destination discovery before validating click/wake activation,
+  keep pending starts cancellable, and clear recovered destination errors without
+  reopening audio. Qualify Omarchy theme colours for newer Qt/Quickshell renderers.
+
 - Add spoken return-to-standby commands and a configurable inactivity timeout
   for wake-started conversations, defaulting to 30 seconds (0 disables it).
   Wait through pending replies and playback; preserve received answers and

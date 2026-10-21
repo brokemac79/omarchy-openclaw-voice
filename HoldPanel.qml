@@ -5,6 +5,7 @@ import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 
 PanelWindow {
   id: root
@@ -72,7 +73,7 @@ PanelWindow {
   Shortcut { sequence: "Escape"; enabled: root.visible; onActivated: root.visible = false }
   Rectangle {
     anchors.fill: parent; radius: 14
-    color: Color.notifications.background; border.color: Color.notifications.border
+    color: Commons.Color.notifications.background; border.color: Commons.Color.notifications.border
     FocusScope {
       id: focusArea
       anchors.fill: parent; focus: true
@@ -97,7 +98,7 @@ PanelWindow {
         Column {
           id: content
           width: parent.width - 12; spacing: 12
-          Text { text: "Hold to talk"; color: Color.notifications.text; font.pixelSize: 18; font.bold: true }
+          Text { text: "Hold to talk"; color: Commons.Color.notifications.text; font.pixelSize: 18; font.bold: true }
           Text {
             width: parent.width
             text: !root.current ? "Voice state unavailable. Use End voice."
@@ -105,19 +106,19 @@ PanelWindow {
                 : root.hold.mode ? voiceState.inputMuted ? "Input muted. Hold again for a follow-up." : "Muting input — wait."
                   : "End conversation or standby, then review and dismiss retained results before changing modes.")
             textFormat: Text.PlainText; wrapMode: Text.Wrap
-            color: Color.notifications.text; font.pixelSize: 14
+            color: Commons.Color.notifications.text; font.pixelSize: 14
           }
           Rectangle {
             id: button
             width: parent.width; height: 90; radius: 10
-            color: root.held && root.hold.ready ? Color.accent : Color.notifications.background
-            border.color: focusArea.activeFocus ? Color.accent : Color.notifications.border
+            color: root.held && root.hold.ready ? Commons.Color.accent : Commons.Color.notifications.background
+            border.color: focusArea.activeFocus ? Commons.Color.accent : Commons.Color.notifications.border
             opacity: root.canBegin || root.held ? 1 : 0.45
             Accessible.role: Accessible.Button; Accessible.name: "Press and hold to talk, or hold Space"
             Text {
               anchors.centerIn: parent
               text: root.held ? root.hold.ready ? "Speak now · Release to stop input" : "Preparing…" : "Press and hold · Space"
-              color: Color.notifications.text; font.pixelSize: 14
+              color: Commons.Color.notifications.text; font.pixelSize: 14
             }
             MouseArea {
               id: holdArea
@@ -133,13 +134,13 @@ PanelWindow {
               ? "Release ends voice, including playback. Submitted work may continue."
               : "Release mutes transmission; capture remains open and the reply can continue. Use End voice to release audio."
             textFormat: Text.PlainText; wrapMode: Text.Wrap
-            color: Color.notifications.text; font.pixelSize: 13
+            color: Commons.Color.notifications.text; font.pixelSize: 13
           }
           Text {
             width: parent.width
             text: "No pre-roll. Release is not an exact request submission, cancellation or completion signal. Each hold is limited to 30 seconds."
             textFormat: Text.PlainText; wrapMode: Text.Wrap
-            color: Color.notifications.text; font.pixelSize: 12
+            color: Commons.Color.notifications.text; font.pixelSize: 12
           }
         }
       }

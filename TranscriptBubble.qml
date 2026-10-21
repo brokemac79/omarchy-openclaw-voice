@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 Rectangle {
   id: bubble
@@ -11,8 +12,8 @@ Rectangle {
   visible: words.length > 0
   implicitHeight: content.implicitHeight + 28
   radius: 14
-  color: Color.notifications.background
-  border.color: replying ? Color.accent : Color.notifications.border
+  color: Commons.Color.notifications.background
+  border.color: replying ? Commons.Color.accent : Commons.Color.notifications.border
   border.width: 1
 
   Column {
@@ -24,7 +25,7 @@ Rectangle {
       textFormat: Text.PlainText
       font.pixelSize: 11
       font.bold: true
-      color: Color.accent
+      color: Commons.Color.accent
     }
     Item {
       width: parent.width
@@ -41,7 +42,7 @@ Rectangle {
         font.pixelSize: 14
         lineHeightMode: Text.FixedHeight
         lineHeight: 19
-        color: Color.notifications.text
+        color: Commons.Color.notifications.text
       }
     }
   }

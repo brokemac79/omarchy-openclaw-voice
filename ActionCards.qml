@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 Rectangle {
   id: root
@@ -11,8 +12,8 @@ Rectangle {
   visible: cards.length > 0 || earlierUnknown > 0 || additionalUnknown
   implicitHeight: content.implicitHeight + 24
   radius: 14
-  color: Color.notifications.background
-  border.color: Color.notifications.border
+  color: Commons.Color.notifications.background
+  border.color: Commons.Color.notifications.border
   border.width: 1
   readonly property string summary: {
     const lines = cards.slice(-4).map(card => "Voice turn " + card.number + " · "
@@ -28,18 +29,18 @@ Rectangle {
     Text {
       text: "Action status"
       textFormat: Text.PlainText; font.pixelSize: 11; font.bold: true
-      color: Color.accent
+      color: Commons.Color.accent
     }
     Text {
       width: parent.width; text: root.summary
       textFormat: Text.PlainText; wrapMode: Text.WordWrap; font.pixelSize: 13
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
     }
     Text {
       width: parent.width
       text: "Heard confirms transcription only. Action start and completion cannot be verified on this connection."
       textFormat: Text.PlainText; wrapMode: Text.WordWrap; font.pixelSize: 12
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
     }
   }
 }

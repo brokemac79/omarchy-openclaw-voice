@@ -18,12 +18,12 @@ test('real daemon switches only after review, binds calls/events to the selected
     const publish = async (path, data) => { await writeFile(path + '.tmp', JSON.stringify(data)); await rename(path + '.tmp', path); };
     const request = (command = 'status', fields = {}) => new Promise((resolve, reject) => {
       const socket = net.connect(socketPath, () => socket.write(JSON.stringify({ command, ...fields }) + '\n'));
-      let data = ''; socket.setTimeout(1500, () => socket.destroy(new Error('Synthetic control timeout')));
+      let data = ''; socket.setTimeout(4000, () => socket.destroy(new Error('Synthetic control timeout')));
       socket.on('error', reject); socket.on('data', value => { data += value; });
       socket.on('end', () => { try { resolve(JSON.parse(data)); } catch (error) { reject(error); } });
     });
     const until = async predicate => {
-      for (let i = 0; i < 150; i++) {
+      for (let i = 0; i < 200; i++) {
         try { const state = await request(); if (predicate(state)) return state; } catch {}
         await new Promise(resolve => setTimeout(resolve, 20));
       }
@@ -53,7 +53,9 @@ test('real daemon switches only after review, binds calls/events to the selected
           async stopAndWait(){clearInterval(this.timer);}
           async request(method,params={}){
             const data=JSON.parse(await readFile(process.env.FIXTURE_CATALOG,'utf8'));
-            if(method==='agents.list')return {agents:data.agents};
+            if(method==='agents.list'){
+              if(!this.discovered){this.discovered=true;await new Promise(resolve=>setTimeout(resolve,1500));}
+              return {agents:data.agents};}
             if(method==='node.list')return {nodes:data.nodes};
             if(method==='sessions.resolve'){const row=data.sessions.find(row=>row.key===params.key);return row?{ok:true,key:row.key,agentId:row.agentId}:{ok:false};}
             if(method==='sessions.list')return {sessions:data.sessions.filter(row=>row.key===params.search)};
@@ -98,7 +100,7 @@ while True:
       };
       const talk = async (voiceSessionId, text, seq) => publish(eventPath, { event: 'talk.event', payload: {
         voiceSessionId, talkEvent: { type: 'output.text.done', turnId: 'fixture-turn', seq, payload: { text } } } });
-      start(); await until(state => state.destination?.state === 'ready');
+      start(); await until(state => state.connected && state.destination?.state === 'stale');
       assert.equal((await request('toggle')).requested, true); await until(state => state.active);
       const first = (await calls()).find(call => call.method === 'talk.client.create');
       assert.equal(first.sessionKey, 'agent:alpha:main');
@@ -125,9 +127,18 @@ while True:
       assert.equal((await request()).lastResult, 'Synthetic Beta result.');
       assert.equal((await request()).answer.text, 'Synthetic Beta result.');
       const starts = await readFile(media, 'utf8'); await request('toggle');
+      await until(state => !state.requested && state.status === 'error' && state.errorCode === 'destination_unavailable');
+      assert.equal(await readFile(media, 'utf8'), starts);
+      catalog.nodes[0].connected = true; await publish(catalogPath, catalog); await request('destinations');
+      const recovered = await until(state => state.destination.state === 'ready' && state.errorCode === null);
+      assert.equal(recovered.status, 'idle'); assert.equal(recovered.requested, false);
+      assert.equal(recovered.lastResult, 'Synthetic Beta result.');
       assert.equal(await readFile(media, 'utf8'), starts);
       await stop(); await publish(eventPath, {}); catalog.nodes[0].connected = true; await publish(catalogPath, catalog);
-      start(); const restored = await until(state => state.destination?.state === 'ready');
+      start(); await until(state => state.connected && state.destination?.state === 'stale');
+      assert.equal((await request('toggle')).requested, true);
+      await request('stop');
+      const restored = await until(state => state.destination?.state === 'ready');
       assert.equal(restored.destination.id, 'work'); assert.equal(restored.requested, false); assert.equal(restored.active, false);
       assert.equal(restored.answer.text, '');
       assert.equal(await readFile(media, 'utf8'), starts);

@@ -5,6 +5,7 @@ import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 
 PanelWindow {
   id: root
@@ -61,14 +62,14 @@ PanelWindow {
     opacity: enabled ? 1 : 0.45
     background: Rectangle {
       radius: 7
-      color: parent.down ? Color.accent : Color.notifications.background
-      border.color: parent.activeFocus ? Color.accent : Color.notifications.border
+      color: parent.down ? Commons.Color.accent : Commons.Color.notifications.background
+      border.color: parent.activeFocus ? Commons.Color.accent : Commons.Color.notifications.border
     }
     contentItem: Text {
       text: parent.text
       textFormat: Text.PlainText
       font: parent.font
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
       horizontalAlignment: Text.AlignHCenter
       verticalAlignment: Text.AlignVCenter
     }
@@ -89,18 +90,18 @@ PanelWindow {
       x: choice.width - width - 10
       y: (choice.height - height) / 2
       text: "▾"
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
       font.pixelSize: 16
     }
     background: Rectangle {
       radius: 7
-      color: Color.notifications.background
-      border.color: choice.activeFocus ? Color.accent : Color.notifications.border
+      color: Commons.Color.notifications.background
+      border.color: choice.activeFocus ? Commons.Color.accent : Commons.Color.notifications.border
     }
     contentItem: Text {
       text: choice.displayText
       textFormat: Text.PlainText
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
       font.pixelSize: 13
       elide: Text.ElideRight
       verticalAlignment: Text.AlignVCenter
@@ -115,11 +116,11 @@ PanelWindow {
         text: modelData.label + "\n" + modelData.detail
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
-        color: Color.notifications.text
+        color: Commons.Color.notifications.text
         font.pixelSize: 12
       }
       background: Rectangle {
-        color: parent.highlighted ? Color.accent : Color.notifications.background
+        color: parent.highlighted ? Commons.Color.accent : Commons.Color.notifications.background
       }
     }
     onActivated: index => root.choose(kind, index)
@@ -156,8 +157,8 @@ PanelWindow {
   Rectangle {
     anchors.fill: parent
     radius: 14
-    color: Color.notifications.background
-    border.color: Color.notifications.border
+    color: Commons.Color.notifications.background
+    border.color: Commons.Color.notifications.border
     Text {
       id: title
       anchors {
@@ -168,7 +169,7 @@ PanelWindow {
       text: "Audio setup"
       font.pixelSize: 17
       font.bold: true
-      color: Color.notifications.text
+      color: Commons.Color.notifications.text
     }
     Flickable {
       id: viewport
@@ -193,7 +194,7 @@ PanelWindow {
           text: !root.current ? "Companion state unavailable. Stop any check before retrying." : root.audio.message || "Select devices only after ending voice and standby. Checks are local and never send speech."
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
           font.pixelSize: 13
         }
         ActionButton {
@@ -204,7 +205,7 @@ PanelWindow {
         Text {
           text: "Microphone"
           font.pixelSize: 14
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
         }
         DeviceChoice {
           id: inputChoice
@@ -216,13 +217,13 @@ PanelWindow {
           text: inputChoice.currentIndex >= 0 ? inputChoice.model[inputChoice.currentIndex].detail : ""
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
           font.pixelSize: 11
         }
         Text {
           text: "Speaker / headphones"
           font.pixelSize: 14
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
         }
         DeviceChoice {
           id: outputChoice
@@ -234,7 +235,7 @@ PanelWindow {
           text: outputChoice.currentIndex >= 0 ? outputChoice.model[outputChoice.currentIndex].detail : ""
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
           font.pixelSize: 11
         }
         ActionButton {
@@ -248,7 +249,7 @@ PanelWindow {
           text: root.checking ? "Local test tone · " + Math.ceil((root.check.remainingMs || 0) / 1000) + " seconds remaining" : "The test tone stops after 2 seconds. Stop check and Close also stop it. No microphone check is included."
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
-          color: Color.notifications.text
+          color: Commons.Color.notifications.text
           font.pixelSize: 12
         }
       }
