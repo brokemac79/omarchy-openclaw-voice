@@ -1,8 +1,11 @@
 # Optional local wake activation
 
 Wake support defaults to disabled. Configuring it does not arm a microphone.
-Click-to-talk uses the existing authenticated Talk route and does not select a
-wake mode. Wake detection grants no permission, authentication or approval.
+With `wake.enabled: true`, the bar icon, app launcher and `toggle` command arm
+local conversation Standby. They do not start Talk until the detector reports a
+wake. Repeating the action during detector startup, Standby or Talk stops voice
+and leaves the microphone Off. With wake disabled, the same action starts Talk
+directly. Wake detection grants no permission, authentication or approval.
 
 Wake-to-conversation activation can return to local standby on a spoken command
 or after inactivity (30 seconds by default). This ends the voice connection,
@@ -398,8 +401,9 @@ return. A release failure leaves Off/error. Received answers remain readable;
 ending the voice connection does not recover results that arrive afterwards.
 An idle provider turn is not proof that background OpenClaw work finished.
 
-Stop always means Off. Standby mute also means Off. Click-to-talk has no automatic
-return timer; a voice standby command is available if wake is configured.
+Stop always means Off. Standby mute also means Off. Direct Talk with wake disabled
+has no automatic return timer. With wake enabled, the icon arms conversation
+mode, including the configured inactivity return and spoken standby commands.
 Hold-to-talk does not accept standby commands or use the timer. The synthetic-silence
 test daemon still refuses standby commands.
 

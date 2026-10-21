@@ -159,6 +159,7 @@ export class EngineOwner {
       this.render();
     }
     await this.cleanup;
+    void this.destinationRecovered();
   }
   async returnToStandby() {
     if (!this.requested || !this.active || this.holdMode || !this.launchWake || this.failure
@@ -185,6 +186,16 @@ export class EngineOwner {
       this.failure = null; this.phase = 'idle'; this.caption = 'Microphone off';
     }
     this.render();
+  }
+  async destinationRecovered() {
+    const recoverable = () => this.failure?.code === 'destination_unavailable' && this.gatewayConnected
+      && !this.requested && !this.standby && !this.standbyStarting && this.phase !== 'stopping'
+      && this.getDestination().destination?.state === 'ready';
+    if (!recoverable()) return;
+    const epoch = this.epoch;
+    await this.mediaCleanup;
+    if (epoch !== this.epoch || this.mediaFault || !recoverable()) return;
+    this.failure = null; this.phase = 'idle'; this.caption = 'Microphone off'; this.render();
   }
   progress(stage) {
     this.readiness.mark(stage);

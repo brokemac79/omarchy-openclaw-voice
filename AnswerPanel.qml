@@ -5,6 +5,7 @@ import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import "AnswerText.js" as AnswerText
 
 // Deliberately opened, focusable reader. It has no audio/control operations.
@@ -48,12 +49,12 @@ PanelWindow {
     opacity: enabled ? 1 : 0.45
     background: Rectangle {
       radius: 7
-      color: parent.down ? Color.accent : Color.notifications.background
-      border.color: parent.activeFocus || parent.hovered ? Color.accent : Color.notifications.border
+      color: parent.down ? Commons.Color.accent : Commons.Color.notifications.background
+      border.color: parent.activeFocus || parent.hovered ? Commons.Color.accent : Commons.Color.notifications.border
     }
     contentItem: Text {
       text: parent.text; textFormat: Text.PlainText
-      font: parent.font; color: Color.notifications.text
+      font: parent.font; color: Commons.Color.notifications.text
       horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
     }
   }
@@ -74,21 +75,21 @@ PanelWindow {
   Rectangle {
     anchors.fill: parent
     radius: 14
-    color: Color.notifications.background
-    border.color: Color.notifications.border
+    color: Commons.Color.notifications.background
+    border.color: Commons.Color.notifications.border
     Column {
       id: header
       anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
       spacing: 7
-      Text { text: "Received answer"; color: Color.notifications.text; font.pixelSize: 17; font.bold: true }
+      Text { text: "Received answer"; color: Commons.Color.notifications.text; font.pixelSize: 17; font.bold: true }
       Text {
         width: parent.width; text: root.destinationText || "Destination context unavailable"
         textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-        color: Color.notifications.text; font.pixelSize: 12
+        color: Commons.Color.notifications.text; font.pixelSize: 12
       }
       Text {
         width: parent.width; text: root.answerStatus; wrapMode: Text.Wrap; textFormat: Text.PlainText
-        color: Color.notifications.text; font.pixelSize: 12
+        color: Commons.Color.notifications.text; font.pixelSize: 12
       }
     }
     Flickable {
@@ -110,9 +111,9 @@ PanelWindow {
           wrapMode: TextEdit.Wrap
           readOnly: true; selectByMouse: true; persistentSelection: true
           activeFocusOnTab: true
-          color: Color.notifications.text
-          selectionColor: Color.accent
-          selectedTextColor: Color.notifications.background
+          color: Commons.Color.notifications.text
+          selectionColor: Commons.Color.accent
+          selectedTextColor: Commons.Color.notifications.background
           font.pixelSize: root.textSize; font.family: "monospace"
           Accessible.name: "Received answer text"
           Keys.onEscapePressed: root.visible = false
@@ -121,7 +122,7 @@ PanelWindow {
           id: linksView
           width: parent.width; spacing: 6
           visible: root.webLinks.length > 0
-          Text { text: "Web links · open explicitly"; color: Color.notifications.text; font.pixelSize: 13 }
+          Text { text: "Web links · open explicitly"; color: Commons.Color.notifications.text; font.pixelSize: 13 }
           Repeater {
             model: root.webLinks
             delegate: ActionButton {
@@ -129,7 +130,7 @@ PanelWindow {
               width: linksView.width
               text: modelData
               Accessible.name: "Open web link " + modelData
-              contentItem: Text { text: parent.text; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: Color.notifications.text; font.pixelSize: 13 }
+              contentItem: Text { text: parent.text; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: Commons.Color.notifications.text; font.pixelSize: 13 }
               onClicked: root.openLink(modelData)
             }
           }

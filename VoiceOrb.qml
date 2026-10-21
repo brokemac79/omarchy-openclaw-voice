@@ -8,6 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import "Instance.js" as Instance
 
 // Conversation and status stay together at the top right. The legacy bottom
@@ -44,7 +45,7 @@ import "Instance.js" as Instance
 // legible in every theme, at any size, and to anyone who cannot separate the
 // two hues anyway.
 //
-// Everything is painted from the live Omarchy palette (Color.accent, .urgent,
+// Everything is painted from the live Omarchy palette (Commons.Color.accent, .urgent,
 // .foreground). Switching theme re-tints it on the next repaint — there are no
 // colours of our own anywhere in here.
 Item {
@@ -98,9 +99,9 @@ Item {
   })[status] || label
 
   readonly property color tint: {
-    if (status === "confirm" || status === "error") return Color.urgent
-    if (status === "acting") return Color.foreground
-    return Color.accent
+    if (status === "confirm" || status === "error") return Commons.Color.urgent
+    if (status === "acting") return Commons.Color.foreground
+    return Commons.Color.accent
   }
 
   readonly property real coreSize: 54
@@ -269,9 +270,9 @@ Item {
         width: parent.width
         implicitHeight: statusContent.implicitHeight + 28
         radius: 14
-        color: Color.notifications.background
+        color: Commons.Color.notifications.background
         border.color: root.status === "error" || root.status === "confirm"
-                      ? root.tint : Color.notifications.border
+                      ? root.tint : Commons.Color.notifications.border
         border.width: 1
         Column {
           id: statusContent
@@ -287,7 +288,7 @@ Item {
             Text {
               text: root.statusText
               textFormat: Text.PlainText
-              color: Color.notifications.text
+              color: Commons.Color.notifications.text
               font.pixelSize: 13
             }
           }
@@ -296,7 +297,7 @@ Item {
             text: root.destinationText
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
-            color: Color.notifications.text
+            color: Commons.Color.notifications.text
             font.pixelSize: 12
           }
           Text {
@@ -308,7 +309,7 @@ Item {
             wrapMode: Text.WordWrap
             maximumLineCount: 3
             elide: Text.ElideRight
-            color: Color.notifications.text
+            color: Commons.Color.notifications.text
             font.pixelSize: 13
           }
           Text {
@@ -317,7 +318,7 @@ Item {
             text: root.recoveryAction
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
-            color: Color.notifications.text
+            color: Commons.Color.notifications.text
             font.pixelSize: 13
           }
         }

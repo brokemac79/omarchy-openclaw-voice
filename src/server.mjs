@@ -74,12 +74,17 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
       }
       catch (error) { return { ready: false, failure: failureDetails(error) }; }
     case 'toggle':
-      if (owner.requested) await owner.stop();
+      if (owner.requested || owner.standby || owner.standbyStarting) await owner.stop();
       else if (owner.reviewRequired && owner.lastInputMode === 'hold') return { ...status(), startFailure: failureDetails(new VoiceError('mode_switch_blocked')) };
       else if (audio.occupied) return { ...status(), startFailure: failureDetails(new VoiceError('audio_busy')) };
       else if (!connected) await owner.fail(new VoiceError('gateway_unavailable'));
-      else if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) await owner.fail(new VoiceError('destination_unavailable'));
-      else void owner.start(invocation);
+      else if (destinations.switching || destinations.snapshot().destination.state === 'unavailable') await owner.fail(new VoiceError('destination_unavailable'));
+      else if (config.wake?.enabled === true) {
+        // The icon and launcher share this operation. A configured wake flow
+        // must never fall through to Talk before the detector signals a wake.
+        if (syntheticSilence) throw new Error('Wake unavailable.');
+        void owner.arm('conversation');
+      } else void owner.start(invocation);
       return status();
     case 'stop': hold.cancel(); await audio.stopCheck(); await owner.stop(); return status();
     case 'quiet': owner.quiet(true); return status();
@@ -91,7 +96,7 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
       if (!connected || syntheticSilence || config.wake?.enabled !== true) throw new Error('Wake unavailable.');
       if (audio.occupied) throw new VoiceError('audio_busy');
       if (owner.reviewRequired && owner.lastInputMode === 'hold') throw new VoiceError('mode_switch_blocked');
-      if (destinations.snapshot().destination.state !== 'ready' || destinations.switching) throw new VoiceError('destination_unavailable');
+      if (destinations.switching || destinations.snapshot().destination.state === 'unavailable') throw new VoiceError('destination_unavailable');
       void owner.arm(command === 'standby-once' ? 'one-request' : 'conversation');
       return status();
     case 'mute': owner.mute(); return status();
@@ -135,7 +140,7 @@ destinations = new Destinations({ presets: config.destinations, path: config.sel
     && !audio?.occupied
     && !session.creating && !session.grant,
   settle: async () => { await owner.cleanup; await session.close(); },
-  onChange: () => owner?.render(),
+  onChange: () => { void owner?.destinationRecovered(); owner?.render(); },
   onInvalidated: () => {
     if (owner?.requested || owner?.standby || owner?.standbyStarting) void owner.fail(new VoiceError('destination_unavailable'));
   },
@@ -163,7 +168,10 @@ owner = new EngineOwner({ session, native,
   wakePhrase: config.wake?.backend === 'sherpa-onnx' ? config.wake.phrase : undefined,
   launch: async callbacks => launchEngine({ ...config, ...await audio.forVoice() }, session, { ...callbacks, syntheticSilence }),
   launchWake: !syntheticSilence && config.wake?.enabled === true
-    ? async callbacks => launchWakeDetector({ ...config, ...await audio.forVoice(true) }, callbacks) : undefined,
+    ? async callbacks => {
+      await destinations.forCall();
+      return launchWakeDetector({ ...config, ...await audio.forVoice(true) }, callbacks);
+    } : undefined,
 });
 hold = new HoldInput({ owner, releaseBehavior: config.holdRelease,
   canStart: () => connected && !shuttingDown && !audio.occupied && !destinations.switching
@@ -174,7 +182,11 @@ const holdTimer = setInterval(() => hold.tick(), 100);
 holdTimer.unref();
 const healthTimer = setInterval(() => {
   audio.tick();
-  if ((owner.requested || owner.standby || owner.standbyStarting) && destinations.snapshot().destination.state !== 'ready') {
+  // Initial discovery is validated by forCall before either native input starts.
+  // Keep startup cancellable while it is waiting, rather than treating pending
+  // discovery as a destination loss. Once bound, retain the usual stale checks.
+  const waitingDiscovery = !destinations.callBinding && !owner.active && (owner.requested || owner.standbyStarting);
+  if (!waitingDiscovery && (owner.requested || owner.standby || owner.standbyStarting) && destinations.snapshot().destination.state !== 'ready') {
     void owner.fail(new VoiceError('destination_unavailable'));
   } else owner.checkHealth();
   // Discovery can expire while a read is still pending; heartbeat freshness
