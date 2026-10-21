@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make the icon and launcher arm local Standby when wake is enabled; require
+  detection before Talk and stop on a repeated click during startup or either mode.
+
 - Wait for initial destination discovery before validating click/wake activation,
   keep pending starts cancellable, and clear recovered destination errors without
   reopening audio. Qualify Omarchy theme colours for newer Qt/Quickshell renderers.

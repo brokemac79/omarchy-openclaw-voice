@@ -14,7 +14,10 @@ Companion setup remains manual.
 
 Talk to your OpenClaw agent through a **native Omarchy bar control and speech bubbles**.
 Click the **OpenClaw lobster-and-microphone icon** to
-start; repeat to stop. A green dot marks an active call; amber marks an error.
+start; repeat to stop. With wake enabled, the first click arms local Standby:
+say the wake phrase and wait for Talk readiness before speaking your request.
+Without wake enabled, the first click starts Talk directly. A green dot marks
+an active call; amber marks an error.
 Voice status and themed speech bubbles stay together at the top right, showing
 your words and OpenClaw's reply as they arrive. The bottom orb is hidden by
 default. The conversation display does not take keyboard focus or block clicks
@@ -182,7 +185,9 @@ Configure OpenClaw and the voice options below before explicitly starting the
 companion with `systemctl --user start openclaw-voice.service`. This connects to
 the configured Gateway and may require ordinary device approval. Check
 `openclaw-voice status` and `openclaw-voice preflight`; neither starts capture.
-Clicking the bar icon or invoking the app launcher explicitly starts a call.
+Clicking the bar icon or invoking the app launcher arms local Standby when
+`wake.enabled` is true, or starts Talk directly when wake is disabled. Repeating
+the action stops either mode; it never bypasses Standby to start Talk.
 The service is not enabled at login. Installing/upgrading stops an existing
 default companion and leaves it stopped; no automatic reconnect or enrollment
 happens during setup.

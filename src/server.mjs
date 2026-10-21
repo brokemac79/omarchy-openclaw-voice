@@ -74,12 +74,17 @@ const control = await listenControl(runtime, async (command, invocation = {}) =>
       }
       catch (error) { return { ready: false, failure: failureDetails(error) }; }
     case 'toggle':
-      if (owner.requested) await owner.stop();
+      if (owner.requested || owner.standby || owner.standbyStarting) await owner.stop();
       else if (owner.reviewRequired && owner.lastInputMode === 'hold') return { ...status(), startFailure: failureDetails(new VoiceError('mode_switch_blocked')) };
       else if (audio.occupied) return { ...status(), startFailure: failureDetails(new VoiceError('audio_busy')) };
       else if (!connected) await owner.fail(new VoiceError('gateway_unavailable'));
       else if (destinations.switching || destinations.snapshot().destination.state === 'unavailable') await owner.fail(new VoiceError('destination_unavailable'));
-      else void owner.start(invocation);
+      else if (config.wake?.enabled === true) {
+        // The icon and launcher share this operation. A configured wake flow
+        // must never fall through to Talk before the detector signals a wake.
+        if (syntheticSilence) throw new Error('Wake unavailable.');
+        void owner.arm('conversation');
+      } else void owner.start(invocation);
       return status();
     case 'stop': hold.cancel(); await audio.stopCheck(); await owner.stop(); return status();
     case 'quiet': owner.quiet(true); return status();

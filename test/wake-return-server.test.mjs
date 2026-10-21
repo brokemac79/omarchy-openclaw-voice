@@ -30,7 +30,7 @@ test('actual daemon returns on user voice/idle, preserves answers and prevents o
   try {
     await writeFile(join(root, 'events.jsonl'), '');
     const sdk = join(root, 'sdk.mjs');
-    await writeFile(sdk, `import {readFile} from 'node:fs/promises';
+    await writeFile(sdk, `import {readFile,appendFile} from 'node:fs/promises';
 export class GatewayClient {
  constructor(options){this.options=options;this.index=0;this.count=0;this.id=null;}
  async start(){this.options.onHelloOk({});this.timer=setInterval(async()=>{
@@ -50,6 +50,7 @@ export class GatewayClient {
   if(method==='config.get')return {config:{auth:{profiles:{fixture:{provider:'openai',mode:'oauth'}}}}};
   if(method==='talk.catalog')return {realtime:{ready:true}};
   if(method==='talk.client.create'){const id=this.id='synthetic-'+(++this.count);
+   await appendFile(process.env.HOME+'/grants',id+'\\n');
    setTimeout(()=>this.options.onEvent({event:'talk.event',payload:{voiceSessionId:id,talkEvent:{type:'session.ready'}}}),20);
    return {provider:'openai',transport:'webrtc',model:'gpt-live-1-codex',clientControl:{owner:'gateway'},
     offerUrl:'/plugins/openai/realtime/calls',voiceSessionId:id,clientSecret:'synthetic-grant'};}
@@ -104,7 +105,18 @@ print(json.dumps([{'name':'fixture-mic','description':'Synthetic input','monitor
     const counts = async () => { try { return (await readFile(join(root, 'workers'), 'utf8')).trim().split('\n'); } catch { return []; } };
     assert.deepEqual(await counts(), []);
     assert.equal((await request('status')).wakeInactivitySeconds, 1);
-    await request('standby-conversation'); await until(state => state.standby);
+    // The bar sends toggle. A cold click must remain cancellable during discovery,
+    // and neither that click nor a second click in Standby may bypass the wake.
+    assert.equal((await request('toggle')).standbyStarting, true);
+    await request('toggle'); await until(state => !state.standbyStarting && state.status === 'idle');
+    await delay(1700); assert.deepEqual(await counts(), []);
+    await request('toggle'); await until(state => state.standby);
+    await delay(100); assert.deepEqual(await counts(), ['wake']);
+    await assert.rejects(readFile(join(root, 'grants')), { code: 'ENOENT' });
+    await request('toggle'); await until(state => !state.standby && state.status === 'idle');
+    assert.deepEqual(await counts(), ['wake']);
+    await assert.rejects(readFile(join(root, 'grants')), { code: 'ENOENT' });
+    await request('toggle'); await until(state => state.standby);
     const wake = async () => { await writeFile(join(root, 'wake-now'), 'yes'); await until(state => state.active); };
     const event = async value => appendFile(join(root, 'events.jsonl'), JSON.stringify(value) + '\n');
     await wake();
@@ -119,10 +131,13 @@ print(json.dumps([{'name':'fixture-mic','description':'Synthetic input','monitor
     await event({ type: 'output.text.done', seq: 4, turnId: 'quote', payload: { text: 'Return to standby' } });
     await event({ type: 'transcript.done', seq: 5, turnId: 'command', payload: { role: 'user', text: 'Go back to standby, please.' } });
     await until(state => state.standby);
-    const beforeStop = await counts(); assert.deepEqual(beforeStop, ['wake', 'talk', 'wake', 'talk', 'wake']);
+    const beforeStop = await counts(); assert.deepEqual(beforeStop, ['wake', 'wake', 'talk', 'wake', 'talk', 'wake']);
     await request('stop'); await until(state => !state.standby && !state.requested && state.status === 'idle');
     await event({ type: 'transcript.done', voiceSessionId: 'synthetic-2', seq: 6, turnId: 'old', payload: { text: 'Return to standby' } });
     await delay(1100); assert.deepEqual(await counts(), beforeStop);
+    await request('toggle'); await until(state => state.standby); await wake();
+    await request('toggle'); await until(state => !state.requested && state.status === 'idle');
+    const afterToggleStop = await counts(); await delay(1100); assert.deepEqual(await counts(), afterToggleStop);
     await request('standby-conversation'); await until(state => state.standby); await wake();
     await event({ type: 'disconnect' });
     await until(state => !state.connected && !state.requested && !state.standby);
