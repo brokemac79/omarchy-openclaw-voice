@@ -27,22 +27,25 @@ The interface is adapted from **[OMA by wombatoperator and contributors](https:/
 with its original MIT notice preserved. See [CREDITS.md](CREDITS.md) for the exact
 source revision and changed files. This is early, independent software.
 
-## OpenClaw compatibility — 19 October 2026
+## OpenClaw compatibility — 4 November 2026
 
-**Use OpenClaw main for the currently tested voice and text permission parity.**
-The latest stable release, [OpenClaw 2026.10.5](https://github.com/openclaw/openclaw/releases/tag/v2026.10.5),
-does not yet include both required fixes:
+**OpenClaw 2026.10.10 contains both required Gateway fixes. Running OpenClaw main
+is no longer required for these fixes.** The stable
+[2026.10.10 release](https://github.com/openclaw/openclaw/releases/tag/v2026.10.10)
+contains:
 
-- [#159697: ordinary permissions for voice requests](https://github.com/openclaw/openclaw/pull/159697)
-  is merged into main but absent from 2026.10.5. That release still applies an
-  additional spoken-confirmation gate to actions it classifies as high-impact.
-- [#170083: prevent immediate Talk consultation aborts](https://github.com/openclaw/openclaw/pull/170083)
-  is merged into main and backported to 2026.10.5.
+- [#159697: ordinary permissions for voice requests](https://github.com/openclaw/openclaw/pull/159697),
+  removing the additional voice-only confirmation gate while retaining ordinary
+  approvals and denials.
+- [#170083: prevent immediate Talk consultation aborts](https://github.com/openclaw/openclaw/pull/170083),
+  keeping a voice consultation independent of the completed connection setup.
 
-We are awaiting a full stable release that includes both fixes. Check the next
-release before switching from main, then test that released package. Inclusion
-in the next release is not yet confirmed. Main also changes over time, so use
-[the tested compatibility notes](docs/COMPATIBILITY.md) when selecting a build.
+The release tag's source and commit ancestry were checked, together with the
+Gateway protocol, desktop SDK exports and native Talk/WebRTC contracts used by
+this plugin. **2026.10.10 is a source-verified compatibility target; a new live
+conversation or clean-install trial against that stock release has not been run.**
+The existing OpenAI OAuth, voice-readiness and desktop audio requirements still
+apply. See [verification evidence and installation checks](docs/COMPATIBILITY.md#openclaw-20261010-source-verification--4-november-2026).
 
 ## Screenshots
 
@@ -104,11 +107,12 @@ path. It does not patch the gateway or replace its authentication.
 - GStreamer base/good/bad plugins and libnice, including `webrtcbin`,
   `webrtcdsp`, Opus and PulseAudio elements. `native/audio.py --check` checks them.
 - An OpenClaw installation exposing `dist/plugin-sdk/gateway-runtime.js`, plus
-  its runtime dependencies and the realtime Talk WebRTC API. The latest manual
-  trial used an OpenClaw main build labelled `2026.10.3`, containing the merged
-  voice/text permission and Talk consultation lifetime fixes. Use main for now,
-  as explained in [OpenClaw compatibility](#openclaw-compatibility--19-october-2026).
-  A main-build label is not a stock-release test.
+  its runtime dependencies and the realtime Talk WebRTC API. Stable `2026.10.10`
+  contains both required voice fixes and has source-verified contracts, as
+  explained in [OpenClaw compatibility](#openclaw-compatibility--4-november-2026).
+  The latest manual conversation trial used a main build labelled `2026.10.3`;
+  that earlier trial is not a stock `2026.10.10` runtime test. Follow the selected
+  OpenClaw/SDK release's Node runtime requirements independently of the companion.
   See [tested compatibility](docs/COMPATIBILITY.md) before installation.
 - A local or remote gateway configured in `~/.openclaw/openclaw.json`, gateway
   authentication with the needed operator scopes, and working GPT-Live ChatGPT OAuth.
@@ -295,11 +299,12 @@ also return after 30 seconds of inactivity by default; set `wake.inactivitySecon
 in the private companion config (`0` disables the timer). Stop disarms input.
 See [setup, validation and limits](docs/WAKE-WORD.md).
 
-With the required OpenClaw main fixes, voice requests use the same ordinary
-permissions and approvals as text requests, without an additional spoken grant.
+With OpenClaw `2026.10.10` or a source build containing both required fixes,
+voice requests use the same ordinary permissions and approvals as text requests,
+without an additional spoken grant.
 The gateway still enforces required approvals, denials and cancellation. Clicking
 the widget never approves an action. Older releases can apply different Talk
-confirmation rules, as described in [OpenClaw compatibility](#openclaw-compatibility--19-october-2026).
+confirmation rules, as described in [OpenClaw compatibility](#openclaw-compatibility--4-november-2026).
 
 The current user/reply excerpt, short status and two audio levels are stored with private permissions
 under `$XDG_RUNTIME_DIR/openclaw-voice/`. The bridge does not save audio or transcript
