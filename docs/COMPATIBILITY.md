@@ -1,8 +1,51 @@
-# Tested compatibility
+# Compatibility and validation
 
-This integration is under development. A released minimum OpenClaw version is
-not yet established. Do not interpret the candidate's version label as a
-supported range such as `>=2026.9.5`.
+OpenClaw `2026.10.10` is a released compatibility target for the two required
+Gateway voice fixes. Running OpenClaw main is no longer required for those fixes.
+The source verification below establishes fix inclusion and matching interfaces;
+it does not establish a fully tested release range or a new live voice trial.
+
+## OpenClaw 2026.10.10 source verification — 4 November 2026
+
+The stable [v2026.10.10 release](https://github.com/openclaw/openclaw/releases/tag/v2026.10.10),
+published on 3 November 2026, resolves to commit
+`7dc3350cb9f08fcf9a0af5c4845a20d5b2f1a8be`. Both original fix commits are
+ancestors of that tag:
+
+| Required fix | Included commit | Release source verification |
+| --- | --- | --- |
+| [#159697: ordinary permissions for voice requests](https://github.com/openclaw/openclaw/pull/159697) | `f4f48684aa20b65359832f23a98fb9aa06e5f802` | The [ordinary tool policy](https://github.com/openclaw/openclaw/blob/v2026.10.10/src/agents/agent-tools.before-tool-call.policy.ts) no longer invokes the additional voice-confirmation gate. Ordinary approval and denial policy remains authoritative. |
+| [#170083: prevent immediate consultation aborts](https://github.com/openclaw/openclaw/pull/170083) | `90b37dff1523d3ad6eb00743df024747b35e63cb` | The [consultation runner](https://github.com/openclaw/openclaw/blob/v2026.10.10/src/gateway/talk/client-agent-consult.ts) requests detached independent root work; the [admission implementation](https://github.com/openclaw/openclaw/blob/v2026.10.10/src/process/gateway-work-admission.ts) detaches it from the completed setup scope. |
+
+The following plugin interfaces were also checked in the release source:
+
+- [Gateway protocol](https://github.com/openclaw/openclaw/blob/v2026.10.10/packages/gateway-protocol/src/version.ts):
+  protocol 4 remains accepted, matching this companion's connection range.
+- [Gateway SDK exports](https://github.com/openclaw/openclaw/blob/v2026.10.10/src/plugin-sdk/gateway-runtime.ts)
+  and the [package entrypoint](https://github.com/openclaw/openclaw/blob/v2026.10.10/package.json):
+  `GatewayClient`, `startGatewayClientWhenEventLoopReady` and
+  `dist/plugin-sdk/gateway-runtime.js` remain available. The desktop SDK and
+  Gateway have their own Node runtime requirements; check them separately.
+- [Talk request schema](https://github.com/openclaw/openclaw/blob/v2026.10.10/packages/gateway-protocol/src/schema/channels.ts)
+  and [client creation](https://github.com/openclaw/openclaw/blob/v2026.10.10/src/gateway/talk/handlers/client-create.ts):
+  the explicit session, model, voice, realtime mode, WebRTC transport,
+  agent-consult brain and `gateway-control-v1` capability remain supported.
+- [OpenAI native session broker](https://github.com/openclaw/openclaw/blob/v2026.10.10/extensions/openai/realtime-quicksilver-session.ts):
+  the WebRTC grant still provides the scoped client secret and
+  `/plugins/openai/realtime/calls` offer route used by the companion. The
+  [model definitions](https://github.com/openclaw/openclaw/blob/v2026.10.10/extensions/openai/realtime-quicksilver.ts)
+  retain the `gpt-live-1-codex` subscription model and its `cove` default voice.
+
+This is read-only source verification against the stable tag. No stock
+`2026.10.10` Gateway/SDK was installed or exercised in a new live conversation,
+and no physical microphone or speaker was used for this check. Existing OpenAI
+OAuth, model availability, pairing, permissions and native audio requirements
+still apply. Use [the installation checks](#check-an-installation) before a
+conversation; preflight alone does not prove end-to-end voice behavior.
+
+The historical qualification sections below retain their original versions and
+test limits. Statements about an unestablished released minimum describe the
+evidence available at the time of those earlier trials.
 
 ## v0.6.1 qualification
 
@@ -296,10 +339,11 @@ The widget does not install OpenClaw or bypass its confirmation rules.
 An app-launch test also needs a paired desktop Node with the required commands.
 Use OpenClaw's supported setup for those permissions.
 
-## Establish a released minimum
+## Complete end-to-end release qualification
 
-After the required fixes enter an OpenClaw release, test that released package.
+Both required fixes are confirmed in `2026.10.10` above. To extend source
+verification to a fully tested released minimum, test that stock package.
 Check Gateway, desktop Node and SDK compatibility on a clean installation.
 Record the exact versions, install/removal results and spoken-test limits here.
-Then replace the candidate requirement with the tested release number.
+Then record the tested release number and the scope of that runtime validation.
 Keep basic voice compatibility separate from app-launch compatibility if their requirements differ.
